@@ -1,13 +1,17 @@
+#pragma once
 #include <cstddef>
 #include "PriceLevel.h"
 
 static constexpr size_t MAX_ORDERS = 1000000;
 static constexpr size_t MIN_REQ_PRICELEVELS = 1000000;
-struct OrderPool
+class OrderPool
 {
+private:
     Order pool[MAX_ORDERS];
     Order *free_list[MAX_ORDERS];
     size_t top;
+
+public:
     OrderPool()
     {
         top = MAX_ORDERS;
@@ -39,11 +43,14 @@ struct OrderPool
     }
 };
 
-struct PriceLevelPool
+class PriceLevelPool
 {
+private:
     PriceLevel pool[MIN_REQ_PRICELEVELS];
     PriceLevel *free_list[MIN_REQ_PRICELEVELS];
     size_t top;
+
+public:
     PriceLevelPool()
     {
         top = MIN_REQ_PRICELEVELS;

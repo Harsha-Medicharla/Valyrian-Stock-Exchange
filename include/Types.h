@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 using OrderId = uint64_t;
 using UserId = uint64_t;

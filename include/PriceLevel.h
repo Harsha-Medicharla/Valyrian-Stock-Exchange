@@ -1,3 +1,4 @@
+#pragma once
 #include "Order.h"
 
 class PriceLevel

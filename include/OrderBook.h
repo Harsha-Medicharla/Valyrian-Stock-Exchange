@@ -1,6 +1,8 @@
+#pragma once
 #include "Pools.h"
-#include <map>
+#include "ART.h"
 #include <unordered_map>
+// #include<absl/container/flat_hash_map.h>
 
 class OrderBook
 {
@@ -8,8 +10,8 @@ private:
     OrderPool order_pool;
     PriceLevelPool price_level_pool;
     std::unordered_map<OrderId, Order *> order_index;
-    std::map<Price, PriceLevel *> buy_book;
-    std::map<Price, PriceLevel *> sell_book;
+    ART buy_book;
+    ART sell_book;
     PriceLevel *best_bid;
     PriceLevel *best_ask;
 
@@ -55,21 +57,21 @@ public:
 
             if (order->side == Side::BUY)
             {
-                best_bid = buy_book.rbegin()->second;
+                best_bid = buy_book.find(buy_book.maxPrice());
             }
             else
             {
-                best_ask = sell_book.begin()->second;
+                best_ask = sell_book.find(sell_book.minPrice());
             }
         }
         catch (...)
         {
             if (order->prev or order->next)
             {
-                PriceLevel *lvl = getPriceLevel(order->side, order->price);
-                if (lvl)
+                PriceLevel *level = getPriceLevel(order->side, order->price);
+                if (level)
                 {
-                    lvl->fifoRemove(order);
+                    level->fifoRemove(order);
                 }
             }
             throw;
@@ -97,11 +99,25 @@ public:
 
         if (order->side == Side::BUY)
         {
-            best_bid = buy_book.empty() ? nullptr : buy_book.rbegin()->second;
+            if (buy_book.empty())
+            {
+                best_bid = nullptr;
+            }
+            else
+            {
+                best_bid = buy_book.find(buy_book.maxPrice());
+            }
         }
         else
         {
-            best_ask = sell_book.empty() ? nullptr : sell_book.begin()->second;
+            if (sell_book.empty())
+            {
+                best_ask = nullptr;
+            }
+            else
+            {
+                best_ask = sell_book.find(sell_book.minPrice());
+            }
         }
 
         order_pool.deallocate(order);
@@ -122,18 +138,18 @@ private:
     {
         auto &book = (side == Side::BUY) ? buy_book : sell_book;
 
-        auto it = book.find(price);
-        if (it != book.end())
+        PriceLevel *level = book.find(price);
+        if (level != nullptr)
         {
-            return it->second;
+            return level;
         }
 
-        PriceLevel *level = price_level_pool.allocate();
+        level = price_level_pool.allocate();
 
         try
         {
             level->price = price;
-            book.emplace(price, level);
+            book.insert(price, level);
         }
         catch (...)
         {
@@ -148,10 +164,10 @@ private:
     {
         auto &book = (side == Side::BUY) ? buy_book : sell_book;
 
-        auto lvl_it = book.find(price);
-        if (lvl_it != book.end())
+        PriceLevel *level = book.find(price);
+        if (level != nullptr)
         {
-            return lvl_it->second;
+            return level;
         }
         else
         {
@@ -163,20 +179,18 @@ private:
     {
         auto &book = (side == Side::BUY) ? buy_book : sell_book;
 
-        auto it = book.find(price);
-        if (it == book.end())
+        PriceLevel *level = book.find(price);
+        if (level == nullptr)
         {
             return;
         }
-
-        PriceLevel *level = it->second;
 
         if (!level->empty())
         {
             return;
         }
 
-        book.erase(it);
+        book.erase(level->price);
         price_level_pool.deallocate(level);
     }
 };
