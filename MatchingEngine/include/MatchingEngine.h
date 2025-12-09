@@ -1,5 +1,6 @@
+#pragma once
 #include <iostream>
-#include "include/OrderBook.h"
+#include "OrderBook.h"
 
 class MatchingEngine
 {
@@ -86,14 +87,14 @@ public:
             }
             else
             {
-                UserId user = order->user_id;
+                UserId user_id = order->user_id;
                 Side side = order->side;
                 OrderType type = order->type;
 
-                order_book.removeOrder(order);
+                onCancelOrder(order_id);
 
                 Order *new_order = order_book.requestAllocationOfOrder();
-                *new_order = {order_id, user, side, type, new_price, new_qty, new_qty, time_stamp++, OrderState::NEW, nullptr, nullptr};
+                *new_order = {order_id, user_id, side, type, new_price, new_qty, new_qty, time_stamp++, OrderState::NEW, nullptr, nullptr};
 
                 onNewOrder(new_order);
             }
@@ -171,25 +172,3 @@ private:
         }
     }
 };
-
-int main()
-{
-    /*
-    to test, make order_book object public and uncomment the below code
-    */
-    // MatchingEngine *me1 = new MatchingEngine(0);
-    // Order* o1 = me1->order_book.requestAllocationOfOrder();
-    // Order* o2 = me1->order_book.requestAllocationOfOrder();
-    // Order* o3 = me1->order_book.requestAllocationOfOrder();
-    // Order* o4 = me1->order_book.requestAllocationOfOrder();
-    // *o1 = {0,0,Side::SELL,OrderType::LIMIT,100,100,100,0,OrderState::NEW,nullptr,nullptr};
-    // *o2 = {1,1,Side::BUY,OrderType::MARKET,100,100,100,0,OrderState::NEW,nullptr,nullptr};
-    // *o3 = {2,2,Side::SELL,OrderType::LIMIT,100,100,100,0,OrderState::NEW,nullptr,nullptr};
-    // *o4 = {3,3,Side::BUY,OrderType::MARKET,100,100,100,0,OrderState::NEW,nullptr,nullptr};
-    // me1->onNewOrder(o1);
-    // me1->onNewOrder(o2);
-    // me1->onNewOrder(o3);
-    // me1->onNewOrder(o4);
-    // std::cout<<"done"<<std::endl;
-    return 0;
-}

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include "PriceLevel.h"
+#include <stdexcept>
 
 static constexpr size_t MAX_ORDERS = 1000000;
 static constexpr size_t MIN_REQ_PRICELEVELS = 1000000;
