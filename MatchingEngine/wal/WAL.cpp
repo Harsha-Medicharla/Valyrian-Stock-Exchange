@@ -3,20 +3,23 @@
 #include <iostream>
 #include <fstream>
 
-WALSystem::WALSystem(const std::string& path) 
-    : logFile(path + ".wal"), 
+WALSystem::WALSystem(const std::string &path)
+    : logFile(path + ".wal"),
       tradeFile(path + ".trades") {}
 
-void WALSystem::writeEntry() {
+void WALSystem::writeEntry()
+{
     std::ofstream file(logFile, std::ios::binary | std::ios::app);
-    if (file.is_open()) {
-        file.write(reinterpret_cast<const char*>(&reusableEntry), sizeof(LogEntry));
+    if (file.is_open())
+    {
+        file.write(reinterpret_cast<const char *>(&reusableEntry), sizeof(LogEntry));
     }
 }
 
-void WALSystem::logInput(WalAction action, const Order* order) {
+void WALSystem::logInput(WalAction action, const Order *order)
+{
     reusableEntry.action = action;
-    reusableEntry.data.order_id = order->order_id; 
+    reusableEntry.data.order_id = order->order_id;
     reusableEntry.data.user_id = order->user_id;
     reusableEntry.data.side = order->side;
     reusableEntry.data.type = order->type;
@@ -29,35 +32,45 @@ void WALSystem::logInput(WalAction action, const Order* order) {
     writeEntry();
 }
 
-void WALSystem::logModify(OrderId id, Price newPrice, Qty newQty) {
+void WALSystem::logModify(OrderId id, Price newPrice, Qty newQty)
+{
     reusableEntry.action = WalAction::MODIFY;
     reusableEntry.data.order_id = id;
     reusableEntry.data.price = newPrice;
     reusableEntry.data.quantity = newQty;
-    
+
     writeEntry();
 }
 
-void WALSystem::logCancel(OrderId id) {
+void WALSystem::logCancel(OrderId id)
+{
     reusableEntry.action = WalAction::CANCEL;
     reusableEntry.data.order_id = id;
-    
+
     writeEntry();
 }
 
-void WALSystem::logTrade(OrderId aggId, OrderId restId, Price price, Qty qty) {
+void WALSystem::logTrade(OrderId aggId, OrderId restId, Price price, Qty qty)
+{
     std::ofstream file(tradeFile, std::ios::app);
-    if (file.is_open()) {
+    if (file.is_open())
+    {
         file << aggId << "," << restId << "," << price << "," << qty << "\n";
     }
 }
 
-void WALSystem::recover(std::function<void(const LogEntry&)> visitor) {
+void WALSystem::recover(std::function<void(const LogEntry &)> visitor)
+{
     std::ifstream log(logFile, std::ios::binary);
-    if (!log.is_open()) return;
+    if (!log.is_open())
+    {
+        return;
+    }
 
-    while (log.read(reinterpret_cast<char*>(&reusableEntry), sizeof(LogEntry))) {
-        if (visitor) {
+    while (log.read(reinterpret_cast<char *>(&reusableEntry), sizeof(LogEntry)))
+    {
+        if (visitor)
+        {
             visitor(reusableEntry);
         }
     }

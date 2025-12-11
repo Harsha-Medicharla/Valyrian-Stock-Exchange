@@ -13,8 +13,8 @@ private:
   ART sell_book;
   PriceLevel *best_bid;
   PriceLevel *best_ask;
-
-public:
+  
+  public:
   OrderBook() : best_bid(nullptr), best_ask(nullptr)
   {
     order_index.reserve(1 << 20);
@@ -33,12 +33,12 @@ public:
     level->aggregated_qty -= qty;
   }
 
-  Order *requestAllocationOfOrder() noexcept
+  Order *requestAllocationOfOrder()
   {
     return order_pool.allocate();
   }
 
-  void requestDeAllocationOfOrder(Order *order) noexcept
+  void requestDeAllocationOfOrder(Order *order)
   {
     order_pool.deallocate(order);
   }
