@@ -6,10 +6,10 @@
 
 extern "C"
 {
-#include "../libs/art/src/art.h"
+#include <art.h>
 }
 
-class ART
+class AdaptiveRadixTree
 {
 private:
     art_tree tree;
@@ -23,21 +23,21 @@ private:
     }
 
 public:
-    ART() noexcept
+    AdaptiveRadixTree() noexcept
     {
         art_tree_init(&tree);
     }
 
-    ~ART() noexcept
+    ~AdaptiveRadixTree() noexcept
     {
         art_tree_destroy(&tree);
     }
 
-    ART(const ART &) = delete;
-    ART &operator=(const ART &) = delete;
+    AdaptiveRadixTree(const AdaptiveRadixTree &) = delete;
+    AdaptiveRadixTree &operator=(const AdaptiveRadixTree &) = delete;
 
-    ART(ART &&) = delete;
-    ART &operator=(ART &&) = delete;
+    AdaptiveRadixTree(AdaptiveRadixTree &&) = delete;
+    AdaptiveRadixTree &operator=(AdaptiveRadixTree &&) = delete;
 
     inline void insert(uint64_t price, PriceLevel *level)
     {
