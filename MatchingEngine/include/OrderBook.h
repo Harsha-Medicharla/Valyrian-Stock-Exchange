@@ -1,7 +1,14 @@
 #pragma once
 #include "Pools.h"
 #include "ART.h"
+#include <chrono>
 #include <absl/container/flat_hash_map.h>
+
+inline TimeStamp getCurrentWallTime()
+{
+    using namespace std::chrono;
+    return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+}
 
 class OrderBook
 {

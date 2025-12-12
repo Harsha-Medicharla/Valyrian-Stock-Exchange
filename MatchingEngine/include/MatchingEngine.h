@@ -135,12 +135,11 @@ public:
         OrderType type = order->type;
 
         onCancelOrder(order->order_id);
-
         Order *new_order = order_book.requestAllocationOfOrder();
-        *new_order = {order_id,        user,    side,    type,
-                      new_price,       new_qty, new_qty, time_stamp++,
-                      OrderState::NEW, nullptr, nullptr};
 
+        *new_order = {order_id,        user,    side,    type,
+                      new_price,       new_qty, new_qty, getCurrentWallTime(),
+                      OrderState::NEW, nullptr, nullptr};
         bool was_recovering = is_recovering;
         is_recovering = true;
         bool success = onNewOrder(new_order);
