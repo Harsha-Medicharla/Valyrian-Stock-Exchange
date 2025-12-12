@@ -37,14 +37,22 @@ public:
 class WALSystem
 {
 private:
-    std::string logFile;
-    std::string tradeFile;
+    std::string logFile;    // Path to the log file (unchanged name)
+    std::string tradeFile;  // Path to the trade file (unchanged name)
+    
+    // NEW: Persistent file streams
+    // We add these to keep the connection open for performance and error checking.
+    std::ofstream logStream;
+    std::ofstream tradeStream;
+
     LogEntry reusableEntry;
 
     void writeEntry();
 
 public:
     WALSystem(const std::string &path);
+    
+    ~WALSystem();
 
     void logInput(WalAction action, const Order *order);
     void logModify(OrderId id, Price newPrice, Qty newQty);
