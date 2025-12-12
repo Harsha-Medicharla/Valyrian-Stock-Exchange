@@ -5,37 +5,45 @@
 #include <stdexcept>
 
 WALSystem::WALSystem(const std::string &path)
-    : logFile(path + ".wal"), tradeFile(path + ".trades") {
+    : logFile(path + ".wal"), tradeFile(path + ".trades")
+{
   // open log stream immediately, is faster
 
   logStream.open(logFile, std::ios::binary | std::ios::app);
-  if (!logStream.is_open()) {
+  if (!logStream.is_open())
+  {
     throw std::runtime_error("CRITICAL: Failed to open WAL file: " + logFile);
   }
 
   // Open Trade Stream immediately
   tradeStream.open(tradeFile, std::ios::app);
-  if (!tradeStream.is_open()) {
+  if (!tradeStream.is_open())
+  {
     throw std::runtime_error("CRITICAL: Failed to open Trades file: " +
                              tradeFile);
   }
 }
 
-WALSystem::~WALSystem() {
+WALSystem::~WALSystem()
+{
   // Ensure all data is written to disk before closing
-  if (logStream.is_open()) {
+  if (logStream.is_open())
+  {
     logStream.flush();
     logStream.close();
   }
-  if (tradeStream.is_open()) {
+  if (tradeStream.is_open())
+  {
     tradeStream.flush();
     tradeStream.close();
   }
 }
 
-void WALSystem::writeEntry() {
+void WALSystem::writeEntry()
+{
   // doesn't write if stream is broken
-  if (!logStream.good()) {
+  if (!logStream.good())
+  {
     throw std::runtime_error("WAL Stream is in a bad state before write.");
   }
 
@@ -43,7 +51,8 @@ void WALSystem::writeEntry() {
                   sizeof(LogEntry));
 
   // Check for immediate write failure
-  if (logStream.fail()) {
+  if (logStream.fail())
+  {
     logStream.clear();
     throw std::runtime_error("CRITICAL: Failed to write to WAL (Disk Full?).");
   }
@@ -52,7 +61,8 @@ void WALSystem::writeEntry() {
   logStream.flush();
 }
 
-void WALSystem::logInput(WalAction action, const Order *order) {
+void WALSystem::logInput(WalAction action, const Order *order)
+{
   reusableEntry.action = action;
   reusableEntry.data.order_id = order->order_id;
   reusableEntry.data.user_id = order->user_id;
@@ -67,7 +77,8 @@ void WALSystem::logInput(WalAction action, const Order *order) {
   writeEntry();
 }
 
-void WALSystem::logModify(OrderId id, Price newPrice, Qty newQty) {
+void WALSystem::logModify(OrderId id, Price newPrice, Qty newQty)
+{
   reusableEntry.action = WalAction::MODIFY;
   reusableEntry.data.order_id = id;
   reusableEntry.data.price = newPrice;
@@ -76,34 +87,42 @@ void WALSystem::logModify(OrderId id, Price newPrice, Qty newQty) {
   writeEntry();
 }
 
-void WALSystem::logCancel(OrderId id) {
+void WALSystem::logCancel(OrderId id)
+{
   reusableEntry.action = WalAction::CANCEL;
   reusableEntry.data.order_id = id;
 
   writeEntry();
 }
 
-void WALSystem::logTrade(OrderId aggId, OrderId restId, Price price, Qty qty) {
-  if (!tradeStream.good()) {
+void WALSystem::logTrade(OrderId aggId, OrderId restId, Price price, Qty qty)
+{
+  if (!tradeStream.good())
+  {
     std::cerr << "Error: Trade stream is not good." << std::endl;
     return;
   }
 
   tradeStream << aggId << "," << restId << "," << price << "," << qty << "\n";
 
-  if (tradeStream.fail()) {
+  if (tradeStream.fail())
+  {
     std::cerr << "Error writing trade to disk (Disk full?)" << std::endl;
     tradeStream.clear();
-  } else {
+  }
+  else
+  {
     tradeStream.flush();
   }
 }
 
-void WALSystem::recover(std::function<void(const LogEntry &)> visitor) {
+void WALSystem::recover(std::function<void(const LogEntry &)> visitor)
+{
   // Use a local stream for reading
   std::ifstream logReader(logFile, std::ios::binary);
 
-  if (!logReader.is_open()) {
+  if (!logReader.is_open())
+  {
     std::cout << "No existing WAL file found (" << logFile
               << "). Starting fresh." << std::endl;
     return;
@@ -113,13 +132,17 @@ void WALSystem::recover(std::function<void(const LogEntry &)> visitor) {
   size_t count = 0;
 
   // read carefully to detect partial writes
-  while (true) {
+  while (true)
+  {
     logReader.read(reinterpret_cast<char *>(&reusableEntry), sizeof(LogEntry));
 
-    if (!logReader) {
-      if (logReader.eof()) {
+    if (!logReader)
+    {
+      if (logReader.eof())
+      {
         // checks if we read partial bytes
-        if (logReader.gcount() > 0) {
+        if (logReader.gcount() > 0)
+        {
           std::cerr << "CRITICAL WARNING: Corrupted WAL entry at end of file. "
                     << "Read " << logReader.gcount() << " bytes, expected "
                     << sizeof(LogEntry) << ". Discarding partial record."
@@ -128,18 +151,23 @@ void WALSystem::recover(std::function<void(const LogEntry &)> visitor) {
         break;
       }
 
-      if (logReader.fail()) {
+      if (logReader.fail())
+      {
         std::cerr << "Error reading WAL file." << std::endl;
         break;
       }
     }
 
     // Pass the entry to the Matching Engine
-    if (visitor) {
-      try {
+    if (visitor)
+    {
+      try
+      {
         visitor(reusableEntry);
         count++;
-      } catch (const std::exception &e) {
+      }
+      catch (const std::exception &e)
+      {
         std::cerr << "Error processing WAL entry #" << count << ": " << e.what()
                   << std::endl;
         throw;
