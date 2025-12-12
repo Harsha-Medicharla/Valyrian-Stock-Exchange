@@ -8,19 +8,17 @@ class MatchingEngine
 private:
     Symbol symbol;
     TimeStamp time_stamp;
-    WALSystem *wal;
+    WALSystem wal;
     bool is_recovering = false;
     OrderBook order_book;
 
 public:
-    MatchingEngine(Symbol symbol) : symbol(symbol), time_stamp(0)
+    MatchingEngine(Symbol symbol) : symbol(symbol), time_stamp(0), wal("engine_" + std::to_string(symbol))
     {
-        wal = new WALSystem("engine_" + std::to_string(symbol));
-
         is_recovering = true;
 
-        wal->recover([this](const LogEntry &entry)
-                     {
+        wal.recover([this](const LogEntry &entry)
+                    {
             if (entry.action == WalAction::ADD) {
                 Order* order = order_book.requestAllocationOfOrder();
                 
@@ -46,13 +44,13 @@ public:
         is_recovering = false;
     }
 
-    ~MatchingEngine() { delete wal; }
+    ~MatchingEngine() = default;
 
     bool onNewOrder(Order *order)
     {
         if (!is_recovering)
         {
-            wal->logInput(WalAction::ADD, order);
+            wal.logInput(WalAction::ADD, order);
         }
 
         try
@@ -82,7 +80,7 @@ public:
     {
         if (!is_recovering)
         {
-            wal->logCancel(order_id);
+            wal.logCancel(order_id);
         }
 
         try
@@ -104,7 +102,7 @@ public:
     bool onModifyOrder(OrderId order_id, Price new_price, Qty new_qty)
     {
         if (!is_recovering)
-            wal->logModify(order_id, new_price, new_qty);
+            wal.logModify(order_id, new_price, new_qty);
 
         try
         {
@@ -197,7 +195,7 @@ private:
     {
         if (!is_recovering)
         {
-            wal->logTrade(aggressor->order_id, resting_order->order_id, price, qty);
+            wal.logTrade(aggressor->order_id, resting_order->order_id, price, qty);
         }
     }
 
