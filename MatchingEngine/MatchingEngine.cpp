@@ -1,6 +1,11 @@
-#include "include/OrderBook.h"
+#include "../include/AdaptiveRadixTree.h"
+#include "../include/OrderBook.h"
 #include <bits/stdc++.h>
 using namespace std;
+
+extern "C" {
+#include "../libs/art/src/art.h"
+}
 
 class MatchingEngine {
 private:
@@ -61,7 +66,7 @@ private:
     auto &book = (incoming->side == Side::BUY) ? order_book.sell_book
                                                : order_book.buy_book;
 
-    while (incoming->remaining > 0 && !book.empty()) {
+    while (incoming->remaining > 0 && !book.isEmpty()) {
       PriceLevel *level = (incoming->side == Side::BUY) ? order_book.best_ask
                                                         : order_book.best_bid;
       Price best_price = level->price;
@@ -107,5 +112,18 @@ int main() {
   me1->onNewOrder(0, 0, Side::BUY, OrderType::MARKET, 100, 100);
   me1->onNewOrder(3, 3, Side::SELL, OrderType::LIMIT, 100, 100);
   me1->onNewOrder(2, 2, Side::BUY, OrderType::MARKET, 100, 100);
+
+  art_tree tree;
+  art_tree_init(&tree);
+
+  uint64_t key = 10125; // example price tick
+  art_insert(&tree, (unsigned char *)&key, 8, (void *)"TEST_VALUE");
+
+  art_leaf *minLeaf = art_minimum(&tree);
+  art_leaf *maxLeaf = art_maximum(&tree);
+
+  std::cout << "Tree size: " << tree.size << "\n";
+  std::cout << "Min value: " << (char *)minLeaf->value << "\n";
+  std::cout << "Max value: " << (char *)maxLeaf->value << "\n";
   return 0;
 }
