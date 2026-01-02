@@ -1,97 +1,187 @@
-#include<bits/stdc++.h>
+#include <iostream>
 #include "include/OrderBook.h"
-using namespace std;
 
-
-
-class MatchingEngine{
-    private:
+class MatchingEngine
+{
+private:
     Symbol symbol;
-    TimeStamp time_stamp;
-    SeqNo trade_seq_no;
     OrderBook order_book;
+    TimeStamp time_stamp;
     // WAL* wal;
-    public:
-    MatchingEngine(Symbol symbol) : symbol(symbol),time_stamp(0),trade_seq_no(0){}
+public:
+    MatchingEngine(Symbol symbol) : symbol(symbol), time_stamp(0) {}
 
-    void onNewOrder(OrderId order_id,UserId user_id,Side side,OrderType order_type,Price price,Qty qty){
-        Order *o = order_book.order_pool.allocate();
-        *o = {order_id,user_id,side,order_type,price,qty,qty,time_stamp++,OrderState::NEW,nullptr,nullptr};
+    void onNewOrder(Order *order)
+    {
+        try
+        {
+            match(order);
+            updateOrderState(order);
 
-        match(o);
-
-        updateOrderState(o);
-
-        if(o->type == OrderType::MARKET){return;}
-
-        if(o->state == OrderState::NEW or o->state == OrderState::PARTIALLY_FILLED){
-            order_book.insertOrder(o);
+            if (order->type == OrderType::MARKET or order->state == OrderState::FILLED)
+            {
+                order_book.requestDeAllocationOfOrder(order);
+            }
+            else
+            {
+                order_book.insertOrder(order);
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "onNewOrder failed: " << e.what() << "\n";
+            order_book.requestDeAllocationOfOrder(order);
         }
     }
 
-    void onCancelOrder(OrderId order_id){
-        Order* o = order_book.findOrder(order_id);
-        if(o == nullptr){return;}
-        if(o->state == OrderState::FILLED){return;}
-        order_book.removeOrder(o);
-    }
-
-    void onModifyOrder(OrderId order_id,Price new_price,Qty new_qty){
-        Order* o = order_book.findOrder(order_id);
-        if(o == nullptr){return;}
-        UserId user_id = o->user_id;
-        Side side = o->side;
-        OrderType order_type = o->type;
-        onCancelOrder(order_id);
-        onNewOrder(order_id,user_id,side,order_type,new_price,new_qty);
-    }
-
-    private:
-    void match(Order* incoming){
-        auto& book = (incoming->side == Side::BUY) ? order_book.sell_book : order_book.buy_book;
-        
-        while(incoming->remaining > 0 && !book.empty()){
-            PriceLevel* level = (incoming->side == Side::BUY) ? order_book.best_ask : order_book.best_bid;
-            Price best_price = level->price;
-            if(incoming->type == OrderType::LIMIT){
-                if(incoming->side == Side::BUY && incoming->price < best_price){break;}
-                if(incoming->side == Side::SELL && incoming->price > best_price){break;}
+    void onCancelOrder(OrderId order_id)
+    {
+        try
+        {
+            Order *order = order_book.findOrder(order_id);
+            if (!order)
+            {
+                return;
             }
-            Order* resting = level->head;
-            Qty traded = min(incoming->remaining,resting->remaining);
-    
-            incoming->remaining -= traded;
-            resting->remaining  -= traded;
-            level->aggregated_qty -= traded;
-    
-            updateOrderState(resting);
-    
-            if(resting->state == OrderState::FILLED){
-                order_book.removeOrder(resting);
+
+            if (order->state == OrderState::FILLED)
+            {
+                return;
+            }
+
+            order_book.removeOrder(order);
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Cancel failed: " << e.what() << "\n";
+        }
+    }
+
+    void onModifyOrder(OrderId order_id, Price new_price, Qty new_qty)
+    {
+        try
+        {
+            Order *order = order_book.findOrder(order_id);
+            if (!order)
+            {
+                return;
+            }
+
+            if (new_price == order->price and new_qty < order->quantity)
+            {
+                Qty reduction_qty = order->quantity - new_qty;
+                if (order->remaining < reduction_qty)
+                {
+                    throw std::logic_error("Invalid modify quantity");
+                }
+
+                order->quantity -= reduction_qty;
+                order->remaining -= reduction_qty;
+                updateOrderState(order);
+
+                if (order->state == OrderState::FILLED)
+                {
+                    order_book.removeOrder(order);
+                }
+            }
+            else
+            {
+                UserId user = order->user_id;
+                Side side = order->side;
+                OrderType type = order->type;
+
+                order_book.removeOrder(order);
+
+                Order *new_order = order_book.requestAllocationOfOrder();
+                *new_order = {order_id, user, side, type, new_price, new_qty, new_qty, time_stamp++, OrderState::NEW, nullptr, nullptr};
+
+                onNewOrder(new_order);
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Modify failed: " << e.what() << "\n";
+        }
+    }
+
+private:
+    void match(Order *incoming_order) noexcept
+    {
+        Side opposite_side = (incoming_order->side == Side::BUY) ? Side::SELL : Side::BUY;
+        while (incoming_order->remaining > 0)
+        {
+            Order *resting_order = order_book.getOrderAtBestPrice(opposite_side);
+            if (!resting_order)
+            {
+                break;
+            }
+            Price best_price = resting_order->price;
+            if (incoming_order->type == OrderType::LIMIT)
+            {
+                if (incoming_order->side == Side::BUY && incoming_order->price < best_price)
+                {
+                    break;
+                }
+                if (incoming_order->side == Side::SELL && incoming_order->price > best_price)
+                {
+                    break;
+                }
+            }
+            Qty traded = std::min(incoming_order->remaining, resting_order->remaining);
+
+            incoming_order->remaining -= traded;
+            order_book.consumeOrder(resting_order, traded);
+
+            updateOrderState(resting_order);
+
+            if (resting_order->state == OrderState::FILLED)
+            {
+                order_book.removeOrder(resting_order);
             }
         }
     }
 
-    void executeTrade(Order* aggressor,Order* resting,Price price,Qty qty){
-        
+    void executeTrade(Order *aggressor, Order *resting_order, Price price, Qty qty)
+    {
+        // related to WAL
+        /*
+        NOTE : the attributes related to this method is not declared
+        in any of the currently implemented files, make sure to do so while
+        implementing WAL
+        */
     }
 
-    void updateOrderState(Order* o){
-        if(o->remaining == o->quantity){o->state = OrderState::NEW;}
-        else if(o->remaining == 0){o->state = OrderState::FILLED;}
-        else if(o->remaining > 0 and o->remaining < o->quantity){
-            o->state = OrderState::PARTIALLY_FILLED;
+    void updateOrderState(Order *order) noexcept
+    {
+        if (order->remaining == order->quantity)
+        {
+            order->state = OrderState::NEW;
+        }
+        else if (order->remaining == 0)
+        {
+            order->state = OrderState::FILLED;
+        }
+        else if (order->remaining > 0 and order->remaining < order->quantity)
+        {
+            order->state = OrderState::PARTIALLY_FILLED;
         }
     }
 };
 
-
-
-int main(){
-    MatchingEngine* me1 = new MatchingEngine(0);
-    me1->onNewOrder(1,1,Side::SELL,OrderType::LIMIT,100,100);
-    me1->onNewOrder(0,0,Side::BUY,OrderType::MARKET,100,100);
-    me1->onNewOrder(3,3,Side::SELL,OrderType::LIMIT,100,100);
-    me1->onNewOrder(2,2,Side::BUY,OrderType::MARKET,100,100);
+int main()
+{
+    // MatchingEngine *me1 = new MatchingEngine(0);
+    // Order* o1 = me1->order_book.requestAllocationOfOrder();
+    // Order* o2 = me1->order_book.requestAllocationOfOrder();
+    // Order* o3 = me1->order_book.requestAllocationOfOrder();
+    // Order* o4 = me1->order_book.requestAllocationOfOrder();
+    // *o1 = {0,0,Side::SELL,OrderType::LIMIT,100,100,100,0,OrderState::NEW,nullptr,nullptr};
+    // *o2 = {1,1,Side::BUY,OrderType::MARKET,100,100,100,0,OrderState::NEW,nullptr,nullptr};
+    // *o3 = {2,2,Side::SELL,OrderType::LIMIT,100,100,100,0,OrderState::NEW,nullptr,nullptr};
+    // *o4 = {3,3,Side::BUY,OrderType::MARKET,100,100,100,0,OrderState::NEW,nullptr,nullptr};
+    // me1->onNewOrder(o1);
+    // me1->onNewOrder(o2);
+    // me1->onNewOrder(o3);
+    // me1->onNewOrder(o4);
     return 0;
 }
