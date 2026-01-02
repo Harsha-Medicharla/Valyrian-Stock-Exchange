@@ -72,28 +72,28 @@ include CMakeFiles/matching_engine.dir/flags.make
 CMakeFiles/matching_engine.dir/codegen:
 .PHONY : CMakeFiles/matching_engine.dir/codegen
 
-CMakeFiles/matching_engine.dir/main.cpp.o: CMakeFiles/matching_engine.dir/flags.make
-CMakeFiles/matching_engine.dir/main.cpp.o: /home/vm1/Documents/Coding/valyrian_stock_exchange/main.cpp
-CMakeFiles/matching_engine.dir/main.cpp.o: CMakeFiles/matching_engine.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/matching_engine.dir/main.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/matching_engine.dir/main.cpp.o -MF CMakeFiles/matching_engine.dir/main.cpp.o.d -o CMakeFiles/matching_engine.dir/main.cpp.o -c /home/vm1/Documents/Coding/valyrian_stock_exchange/main.cpp
+CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o: CMakeFiles/matching_engine.dir/flags.make
+CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o: /home/vm1/Documents/Coding/valyrian_stock_exchange/MatchingEngine/MatchingEngine.cpp
+CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o: CMakeFiles/matching_engine.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o -MF CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o.d -o CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o -c /home/vm1/Documents/Coding/valyrian_stock_exchange/MatchingEngine/MatchingEngine.cpp
 
-CMakeFiles/matching_engine.dir/main.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/matching_engine.dir/main.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vm1/Documents/Coding/valyrian_stock_exchange/main.cpp > CMakeFiles/matching_engine.dir/main.cpp.i
+CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vm1/Documents/Coding/valyrian_stock_exchange/MatchingEngine/MatchingEngine.cpp > CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.i
 
-CMakeFiles/matching_engine.dir/main.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/matching_engine.dir/main.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vm1/Documents/Coding/valyrian_stock_exchange/main.cpp -o CMakeFiles/matching_engine.dir/main.cpp.s
+CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vm1/Documents/Coding/valyrian_stock_exchange/MatchingEngine/MatchingEngine.cpp -o CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.s
 
 # Object files for target matching_engine
 matching_engine_OBJECTS = \
-"CMakeFiles/matching_engine.dir/main.cpp.o"
+"CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o"
 
 # External object files for target matching_engine
 matching_engine_EXTERNAL_OBJECTS =
 
-/home/vm1/Documents/Coding/valyrian_stock_exchange/matching_engine: CMakeFiles/matching_engine.dir/main.cpp.o
+/home/vm1/Documents/Coding/valyrian_stock_exchange/matching_engine: CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o
 /home/vm1/Documents/Coding/valyrian_stock_exchange/matching_engine: CMakeFiles/matching_engine.dir/build.make
 /home/vm1/Documents/Coding/valyrian_stock_exchange/matching_engine: CMakeFiles/matching_engine.dir/compiler_depend.ts
 /home/vm1/Documents/Coding/valyrian_stock_exchange/matching_engine: libart.a

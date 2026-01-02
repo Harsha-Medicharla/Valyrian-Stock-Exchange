@@ -1,3 +1,4 @@
+#pragma once
 #include "DataStructures.h"
 #include <cstdint>
 #include <cstring>

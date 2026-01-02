@@ -113,17 +113,5 @@ int main() {
   me1->onNewOrder(3, 3, Side::SELL, OrderType::LIMIT, 100, 100);
   me1->onNewOrder(2, 2, Side::BUY, OrderType::MARKET, 100, 100);
 
-  art_tree tree;
-  art_tree_init(&tree);
-
-  uint64_t key = 10125; // example price tick
-  art_insert(&tree, (unsigned char *)&key, 8, (void *)"TEST_VALUE");
-
-  art_leaf *minLeaf = art_minimum(&tree);
-  art_leaf *maxLeaf = art_maximum(&tree);
-
-  std::cout << "Tree size: " << tree.size << "\n";
-  std::cout << "Min value: " << (char *)minLeaf->value << "\n";
-  std::cout << "Max value: " << (char *)maxLeaf->value << "\n";
   return 0;
 }

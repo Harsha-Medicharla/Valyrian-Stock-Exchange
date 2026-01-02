@@ -63,13 +63,13 @@ CMAKE_BINARY_DIR = /home/vm1/Documents/Coding/valyrian_stock_exchange/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/art.dir/all
 all: CMakeFiles/matching_engine.dir/all
+all: CMakeFiles/art.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
-codegen: CMakeFiles/art.dir/codegen
 codegen: CMakeFiles/matching_engine.dir/codegen
+codegen: CMakeFiles/art.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
@@ -77,41 +77,9 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/art.dir/clean
 clean: CMakeFiles/matching_engine.dir/clean
+clean: CMakeFiles/art.dir/clean
 .PHONY : clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/art.dir
-
-# All Build rule for target.
-CMakeFiles/art.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles --progress-num=1,2 "Built target art"
-.PHONY : CMakeFiles/art.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/art.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/art.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles 0
-.PHONY : CMakeFiles/art.dir/rule
-
-# Convenience name for target.
-art: CMakeFiles/art.dir/rule
-.PHONY : art
-
-# codegen rule for target.
-CMakeFiles/art.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles --progress-num=1,2 "Finished codegen for target art"
-.PHONY : CMakeFiles/art.dir/codegen
-
-# clean rule for target.
-CMakeFiles/art.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/clean
-.PHONY : CMakeFiles/art.dir/clean
 
 #=============================================================================
 # Target rules for target CMakeFiles/matching_engine.dir
@@ -144,6 +112,38 @@ CMakeFiles/matching_engine.dir/codegen:
 CMakeFiles/matching_engine.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/clean
 .PHONY : CMakeFiles/matching_engine.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/art.dir
+
+# All Build rule for target.
+CMakeFiles/art.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles --progress-num=1,2 "Built target art"
+.PHONY : CMakeFiles/art.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/art.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/art.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles 0
+.PHONY : CMakeFiles/art.dir/rule
+
+# Convenience name for target.
+art: CMakeFiles/art.dir/rule
+.PHONY : art
+
+# codegen rule for target.
+CMakeFiles/art.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/vm1/Documents/Coding/valyrian_stock_exchange/build/CMakeFiles --progress-num=1,2 "Finished codegen for target art"
+.PHONY : CMakeFiles/art.dir/codegen
+
+# clean rule for target.
+CMakeFiles/art.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/clean
+.PHONY : CMakeFiles/art.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

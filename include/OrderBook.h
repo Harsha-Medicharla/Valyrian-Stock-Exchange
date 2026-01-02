@@ -108,7 +108,6 @@ private:
   static constexpr uint64_t TICK_MULTIPLIER = 100;
 
 public:
-  OrderBook() = default;
 
   void insertOrder(Order *o) {
     PriceLevel *level = getOrCreatePriceLevel(o->side, o->price);

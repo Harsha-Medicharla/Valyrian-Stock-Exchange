@@ -1,1 +1,1 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/matching_engine.dir/link.d CMakeFiles/matching_engine.dir/main.cpp.o -o /home/vm1/Documents/Coding/valyrian_stock_exchange/matching_engine  libart.a
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/matching_engine.dir/link.d CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o -o /home/vm1/Documents/Coding/valyrian_stock_exchange/matching_engine  libart.a

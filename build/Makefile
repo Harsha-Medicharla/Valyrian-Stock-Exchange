@@ -117,6 +117,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named matching_engine
+
+# Build rule for target.
+matching_engine: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 matching_engine
+.PHONY : matching_engine
+
+# fast build rule for target.
+matching_engine/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/build
+.PHONY : matching_engine/fast
+
+#=============================================================================
 # Target rules for targets named art
 
 # Build rule for target.
@@ -129,18 +142,29 @@ art/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/build
 .PHONY : art/fast
 
-#=============================================================================
-# Target rules for targets named matching_engine
+MatchingEngine/MatchingEngine.o: MatchingEngine/MatchingEngine.cpp.o
+.PHONY : MatchingEngine/MatchingEngine.o
 
-# Build rule for target.
-matching_engine: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 matching_engine
-.PHONY : matching_engine
+# target to build an object file
+MatchingEngine/MatchingEngine.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o
+.PHONY : MatchingEngine/MatchingEngine.cpp.o
 
-# fast build rule for target.
-matching_engine/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/build
-.PHONY : matching_engine/fast
+MatchingEngine/MatchingEngine.i: MatchingEngine/MatchingEngine.cpp.i
+.PHONY : MatchingEngine/MatchingEngine.i
+
+# target to preprocess a source file
+MatchingEngine/MatchingEngine.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.i
+.PHONY : MatchingEngine/MatchingEngine.cpp.i
+
+MatchingEngine/MatchingEngine.s: MatchingEngine/MatchingEngine.cpp.s
+.PHONY : MatchingEngine/MatchingEngine.s
+
+# target to generate assembly for a file
+MatchingEngine/MatchingEngine.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.s
+.PHONY : MatchingEngine/MatchingEngine.cpp.s
 
 libs/art/src/art.o: libs/art/src/art.c.o
 .PHONY : libs/art/src/art.o
@@ -166,30 +190,6 @@ libs/art/src/art.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/art.dir/build.make CMakeFiles/art.dir/libs/art/src/art.c.s
 .PHONY : libs/art/src/art.c.s
 
-main.o: main.cpp.o
-.PHONY : main.o
-
-# target to build an object file
-main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/main.cpp.o
-.PHONY : main.cpp.o
-
-main.i: main.cpp.i
-.PHONY : main.i
-
-# target to preprocess a source file
-main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/main.cpp.i
-.PHONY : main.cpp.i
-
-main.s: main.cpp.s
-.PHONY : main.s
-
-# target to generate assembly for a file
-main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/matching_engine.dir/build.make CMakeFiles/matching_engine.dir/main.cpp.s
-.PHONY : main.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -200,12 +200,12 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... art"
 	@echo "... matching_engine"
+	@echo "... MatchingEngine/MatchingEngine.o"
+	@echo "... MatchingEngine/MatchingEngine.i"
+	@echo "... MatchingEngine/MatchingEngine.s"
 	@echo "... libs/art/src/art.o"
 	@echo "... libs/art/src/art.i"
 	@echo "... libs/art/src/art.s"
-	@echo "... main.o"
-	@echo "... main.i"
-	@echo "... main.s"
 .PHONY : help
 
 

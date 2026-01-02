@@ -2,7 +2,7 @@
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/Scrt1.o \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/crti.o \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/crtbeginS.o \
-  CMakeFiles/matching_engine.dir/main.cpp.o \
+  CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o \
   libart.a \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/libstdc++.so \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/libm.so \
@@ -38,7 +38,7 @@
 
 /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/crtbeginS.o:
 
-CMakeFiles/matching_engine.dir/main.cpp.o:
+CMakeFiles/matching_engine.dir/MatchingEngine/MatchingEngine.cpp.o:
 
 libart.a:
 
