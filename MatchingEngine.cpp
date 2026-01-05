@@ -149,6 +149,10 @@ private:
         in any of the currently implemented files, make sure to do so while
         implementing WAL
         */
+        /*
+        and also the necessary methods of WAL that are required to be called at
+        required places of matching engine are not done, make sure to do so
+        */
     }
 
     void updateOrderState(Order *order) noexcept
@@ -170,6 +174,9 @@ private:
 
 int main()
 {
+    /*
+    to test, make order_book object public and uncomment the below code
+    */
     // MatchingEngine *me1 = new MatchingEngine(0);
     // Order* o1 = me1->order_book.requestAllocationOfOrder();
     // Order* o2 = me1->order_book.requestAllocationOfOrder();
@@ -183,5 +190,6 @@ int main()
     // me1->onNewOrder(o2);
     // me1->onNewOrder(o3);
     // me1->onNewOrder(o4);
+    // std::cout<<"done"<<std::endl;
     return 0;
 }
