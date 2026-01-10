@@ -10,8 +10,9 @@ private:
     TimeStamp time_stamp;
     WALSystem* wal; 
     bool is_recovering = false;
-    OrderBook order_book; 
+    
 public:
+    OrderBook order_book; 
     MatchingEngine(Symbol symbol) : symbol(symbol), time_stamp(0) {
         wal = new WALSystem("engine_" + std::to_string(symbol));
 
@@ -169,50 +170,50 @@ int main()
     // To test, uncomment the following code block and make the order_book object public
 
     
-    // std::cout << "Starting Engine" << std::endl;
-    // MatchingEngine *engine = new MatchingEngine(1);
-    // Order* bestSell = engine->order_book.getOrderAtBestPrice(Side::SELL);
+    std::cout << "Starting Engine" << std::endl;
+    MatchingEngine *engine = new MatchingEngine(1);
+    Order* bestSell = engine->order_book.getOrderAtBestPrice(Side::SELL);
 
-    // if (bestSell != nullptr) {
-    //     std::cout << "\nSuccessful Restoration" << std::endl;
-    //     bool idMatch = (bestSell->order_id == 2);
-    //     bool qtyMatch = (bestSell->remaining == 30);
-    //     bool priceMatch = (bestSell->price == 110);
-    //     std::cout << "   -> Order ID: " << bestSell->order_id << (idMatch ? " [OK]" : " [FAIL]") << std::endl;
-    //     std::cout << "   -> Remaining: " << bestSell->remaining << (qtyMatch ? " [OK]" : " [FAIL]") << std::endl;
-    //     std::cout << "   -> Price: " << bestSell->price << (priceMatch ? " [OK]" : " [FAIL]") << std::endl;
+    if (bestSell != nullptr) {
+        std::cout << "\nSuccessful Restoration" << std::endl;
+        bool idMatch = (bestSell->order_id == 2);
+        bool qtyMatch = (bestSell->remaining == 30);
+        bool priceMatch = (bestSell->price == 110);
+        std::cout << "   -> Order ID: " << bestSell->order_id << (idMatch ? " [OK]" : " [FAIL]") << std::endl;
+        std::cout << "   -> Remaining: " << bestSell->remaining << (qtyMatch ? " [OK]" : " [FAIL]") << std::endl;
+        std::cout << "   -> Price: " << bestSell->price << (priceMatch ? " [OK]" : " [FAIL]") << std::endl;
 
-    //     if (idMatch && qtyMatch && priceMatch) {
-    //         std::cout << "\nSuccessful Restoration" << std::endl;
-    //     } else {
-    //         std::cout << "\nIncorrect data fetching" << std::endl;
-    //     }
-    // } 
-    // else {
-    //     std::cout << "\nNo orders yet, filling orderBook" << std::endl;
-    //     Order* o1 = engine->order_book.requestAllocationOfOrder();
-    //     *o1 = {1, 101, Side::SELL, OrderType::LIMIT, 100, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
-    //     engine->onNewOrder(o1);
-    //     std::cout << "1. Placed SELL 50 @ 100 (Order 1)" << std::endl;
-    //     Order* o2 = engine->order_book.requestAllocationOfOrder();
-    //     *o2 = {2, 101, Side::SELL, OrderType::LIMIT, 110, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
-    //     engine->onNewOrder(o2);
-    //     std::cout << "2. Placed SELL 50 @ 110 (Order 2)" << std::endl;
-    //     Order* o3 = engine->order_book.requestAllocationOfOrder();
-    //     *o3 = {3, 101, Side::SELL, OrderType::LIMIT, 120, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
-    //     engine->onNewOrder(o3);
-    //     std::cout << "3. Placed SELL 50 @ 120 (Order 3)" << std::endl;
-    //     Order* o4 = engine->order_book.requestAllocationOfOrder();
-    //     *o4 = {4, 102, Side::BUY, OrderType::MARKET, 0, 70, 70, 0, OrderState::NEW, nullptr, nullptr};
-    //     engine->onNewOrder(o4);
-    //     std::cout << "4. Placed BUY MARKET 70 (Sweeps Order 1 & Part of Order 2)" << std::endl;
-    //     engine->onCancelOrder(3);
-    //     std::cout << "5. Cancelled Order 3" << std::endl;
+        if (idMatch && qtyMatch && priceMatch) {
+            std::cout << "\nSuccessful Restoration" << std::endl;
+        } else {
+            std::cout << "\nIncorrect data fetching" << std::endl;
+        }
+    } 
+    else {
+        std::cout << "\nNo orders yet, filling orderBook" << std::endl;
+        Order* o1 = engine->order_book.requestAllocationOfOrder();
+        *o1 = {1, 101, Side::SELL, OrderType::LIMIT, 100, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
+        engine->onNewOrder(o1);
+        std::cout << "1. Placed SELL 50 @ 100 (Order 1)" << std::endl;
+        Order* o2 = engine->order_book.requestAllocationOfOrder();
+        *o2 = {2, 101, Side::SELL, OrderType::LIMIT, 110, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
+        engine->onNewOrder(o2);
+        std::cout << "2. Placed SELL 50 @ 110 (Order 2)" << std::endl;
+        Order* o3 = engine->order_book.requestAllocationOfOrder();
+        *o3 = {3, 101, Side::SELL, OrderType::LIMIT, 120, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
+        engine->onNewOrder(o3);
+        std::cout << "3. Placed SELL 50 @ 120 (Order 3)" << std::endl;
+        Order* o4 = engine->order_book.requestAllocationOfOrder();
+        *o4 = {4, 102, Side::BUY, OrderType::MARKET, 0, 70, 70, 0, OrderState::NEW, nullptr, nullptr};
+        engine->onNewOrder(o4);
+        std::cout << "4. Placed BUY MARKET 70 (Sweeps Order 1 & Part of Order 2)" << std::endl;
+        engine->onCancelOrder(3);
+        std::cout << "5. Cancelled Order 3" << std::endl;
 
-    //     std::cout << "\nSequence Complete" << std::endl;
-    //     std::cout << "On rerunning, Order #2 should have 30 items left." << std::endl;
-    // }
+        std::cout << "\nSequence Complete" << std::endl;
+        std::cout << "On rerunning, Order #2 should have 30 items left." << std::endl;
+    }
 
-    // delete engine;
+    delete engine;
     return 0;
 }
