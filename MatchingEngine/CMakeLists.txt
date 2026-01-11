@@ -44,12 +44,24 @@ target_include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+add_library(wal STATIC wal/WAL.cpp)
+target_include_directories(wal
+  PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(
+  wal
+  PUBLIC
+  absl::flat_hash_map
+)
+
 target_link_libraries(
   matching_engine_test
   PRIVATE
   art
+  wal
   GTest::gtest_main
-  absl::flat_hash_map
 )
 
 
