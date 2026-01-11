@@ -13,6 +13,16 @@ target_include_directories(art PUBLIC libs/art/src)
 include(FetchContent)
 
 FetchContent_Declare(
+  absl
+  GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+  GIT_TAG 20260107.0
+)
+
+set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(absl)
+
+FetchContent_Declare(
   googletest
   GIT_REPOSITORY https://github.com/google/googletest.git
   GIT_TAG v1.14.0
@@ -39,6 +49,7 @@ target_link_libraries(
   PRIVATE
   art
   GTest::gtest_main
+  absl::flat_hash_map
 )
 
 
