@@ -72,7 +72,7 @@ public:
     {
         if (level == nullptr)
         {
-            throw std::logic_error("Attempt to deallocate null Order");
+            throw std::logic_error("Attempt to deallocate null PriceLevel");
         }
         if (top >= MIN_REQ_PRICELEVELS)
         {
