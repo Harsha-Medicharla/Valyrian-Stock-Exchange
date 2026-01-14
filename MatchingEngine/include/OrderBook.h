@@ -6,8 +6,8 @@
 
 inline TimeStamp getCurrentWallTime()
 {
-    using namespace std::chrono;
-    return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+  using namespace std::chrono;
+  return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 }
 
 class OrderBook
@@ -20,8 +20,8 @@ private:
   AdaptiveRadixTree sell_book;
   PriceLevel *best_bid;
   PriceLevel *best_ask;
-  
-  public:
+
+public:
   OrderBook() : best_bid(nullptr), best_ask(nullptr)
   {
     order_index.reserve(1 << 20);

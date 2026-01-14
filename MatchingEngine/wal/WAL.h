@@ -37,9 +37,9 @@ public:
 class WALSystem
 {
 private:
-    std::string logFile;    // Path to the log file (unchanged name)
-    std::string tradeFile;  // Path to the trade file (unchanged name)
-    
+    std::string logFile;   // Path to the log file (unchanged name)
+    std::string tradeFile; // Path to the trade file (unchanged name)
+
     // NEW: Persistent file streams
     // We add these to keep the connection open for performance and error checking.
     std::ofstream logStream;
@@ -51,7 +51,7 @@ private:
 
 public:
     WALSystem(const std::string &path);
-    
+
     ~WALSystem();
 
     void logInput(WalAction action, const Order *order);

@@ -3,3 +3,5 @@ build.sh
 matching_engine_test
 .DS_Store
 **/.DS_Store
+*.wal
+*.trades
