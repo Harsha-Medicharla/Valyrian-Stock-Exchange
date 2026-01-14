@@ -1,6 +1,6 @@
 #pragma once
 #include "Pools.h"
-#include "ART.h"
+#include "AdaptiveRadixTree.h"
 #include <absl/container/flat_hash_map.h>
 
 class OrderBook
@@ -9,8 +9,8 @@ private:
   OrderPool order_pool;
   PriceLevelPool price_level_pool;
   absl::flat_hash_map<OrderId, Order *> order_index;
-  ART buy_book;
-  ART sell_book;
+  AdaptiveRadixTree buy_book;
+  AdaptiveRadixTree sell_book;
   PriceLevel *best_bid;
   PriceLevel *best_ask;
   
