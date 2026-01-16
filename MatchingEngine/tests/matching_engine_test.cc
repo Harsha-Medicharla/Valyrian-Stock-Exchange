@@ -1,8 +1,443 @@
 #include <gtest/gtest.h>
 #include "MatchingEngine.h"
 
+static std::string walPath(int id) {
+    return "test_wal_" + std::to_string(id);
+}
 
-// test 1(unit test)
+
+
+/*
+    before running this file,
+ - make everything public in OrderBook.h and MatchingEngine.h
+*/
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// ---------------------------independent functions test---------------------------
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+// test 1
+// Allocate returns valid order
+TEST(PoolTest, AllocateOrderReturnsNonNull) {
+    OrderBook *book = new OrderBook();
+
+    Order* o = book->requestAllocationOfOrder();
+    ASSERT_NE(o, nullptr);
+}
+
+
+// test 2
+// Deallocation allows reuse
+TEST(PoolTest, DeallocateAndReuseOrder) {
+    OrderBook *book = new OrderBook();
+
+    Order* o1 = book->requestAllocationOfOrder();
+    ASSERT_NE(o1, nullptr);
+
+    book->requestDeAllocationOfOrder(o1);
+
+    Order* o2 = book->requestAllocationOfOrder();
+    ASSERT_NE(o2, nullptr);
+
+    // Pool should reuse memory
+    EXPECT_EQ(o1, o2);
+}
+
+
+// test 3
+// Multiple allocations are distinct
+TEST(PoolTest, MultipleAllocationsDistinct) {
+    OrderBook *book = new OrderBook();
+
+    Order* o1 = book->requestAllocationOfOrder();
+    Order* o2 = book->requestAllocationOfOrder();
+
+    ASSERT_NE(o1, nullptr);
+    ASSERT_NE(o2, nullptr);
+    EXPECT_NE(o1, o2);
+}
+
+
+// test 4
+// Deallocating nullptr is safe (defensive)
+TEST(PoolTest, DeallocateNullptrThrowsLogicError) {
+    OrderBook *book = new OrderBook();
+    EXPECT_THROW(
+        book->requestDeAllocationOfOrder(nullptr),
+        std::logic_error
+    );
+}
+
+
+// test 5
+// Insert + Find
+TEST(ARTTest, InsertAndFind) {
+    AdaptiveRadixTree tree;
+    PriceLevel *level;
+    tree.insert(10, level);
+    auto val = tree.find(10);
+
+    ASSERT_NE(val, nullptr);
+    EXPECT_EQ(val, level);
+}
+
+
+// test 6
+// Find non-existent key
+TEST(ARTTest, FindMissingKeyReturnsNull) {
+    AdaptiveRadixTree tree;
+
+    EXPECT_EQ(tree.find(999), nullptr);
+}
+
+
+// test 7
+// Erase removes key
+TEST(ARTTest, EraseRemovesKey) {
+    AdaptiveRadixTree tree;
+    PriceLevel *level;
+    tree.insert(5, level);
+    tree.erase(5);
+
+    EXPECT_EQ(tree.find(5), nullptr);
+}
+
+
+// test 8
+// Multiple inserts preserve correctness
+TEST(ARTTest, MultipleKeysWork) {
+    AdaptiveRadixTree tree;
+    PriceLevel *level1;
+    PriceLevel *level2;
+    PriceLevel *level3;
+    tree.insert(1, level1);
+    tree.insert(2, level2);
+    tree.insert(3, level3);
+
+    EXPECT_EQ(tree.find(1), level1);
+    EXPECT_EQ(tree.find(2), level2);
+    EXPECT_EQ(tree.find(3), level3);
+}
+
+
+// test 9
+// findOrder
+TEST(OrderBookTest, FindOrderById) {
+    OrderBook *book = new OrderBook();
+
+    Order* o = book->requestAllocationOfOrder();
+    *o = {1,1,Side::BUY,OrderType::LIMIT,10,100,100,0,OrderState::NEW,nullptr,nullptr};
+
+    book->insertOrder(o);
+
+    Order* found = book->findOrder(1);
+    EXPECT_EQ(found, o);
+}
+
+
+// test 10
+// getOrCreatePriceLevel
+TEST(OrderBookTest, GetOrCreatePriceLevel) {
+    OrderBook *book = new OrderBook();
+
+    PriceLevel* level = book->getOrCreatePriceLevel(Side::BUY, 10);
+    ASSERT_NE(level, nullptr);
+
+    EXPECT_TRUE(book->buy_book.size() == 1);
+    EXPECT_TRUE(book->buy_book.find(10) == level);
+}
+
+
+// test 11
+// getPriceLevel
+TEST(OrderBookTest, GetPriceLevel) {
+    OrderBook *book = new OrderBook();
+
+    book->getOrCreatePriceLevel(Side::SELL, 20);
+    PriceLevel* level = book->getPriceLevel(Side::SELL, 20);
+
+    ASSERT_NE(level, nullptr);
+    EXPECT_EQ(level->price, 20);
+}
+
+
+// test 12
+// removePriceLevelIfEmpty
+TEST(OrderBookTest, RemovePriceLevelIfEmpty) {
+    OrderBook *book = new OrderBook();
+
+    PriceLevel* level = book->getOrCreatePriceLevel(Side::BUY, 30);
+    ASSERT_NE(level, nullptr);
+
+    book->removePriceLevelIfEmpty(Side::BUY, 30);
+
+    EXPECT_TRUE(book->buy_book.empty());
+}
+
+
+// test 13
+// updateOrderState() (MatchingEngine)
+TEST(OrderStateTest, UpdateOrderState) {
+    MatchingEngine *engine = new MatchingEngine(7);
+
+    Order o{};
+
+    o.quantity = 100;
+    o.remaining = 100;
+    engine->updateOrderState(&o);
+    EXPECT_EQ(o.state, OrderState::NEW);
+
+    o.remaining = 50;
+    engine->updateOrderState(&o);
+    EXPECT_EQ(o.state, OrderState::PARTIALLY_FILLED);
+
+    o.remaining = 0;
+    engine->updateOrderState(&o);
+    EXPECT_EQ(o.state, OrderState::FILLED);
+}
+
+
+// test 14
+// Test FIFO push order
+TEST(PriceLevelTest, FIFOPushOrder) {
+    PriceLevel level{};
+
+    Order a{}, b{}, c{};
+
+    level.fifoPush(&a);
+    level.fifoPush(&b);
+    level.fifoPush(&c);
+
+    EXPECT_EQ(level.head, &a);
+    EXPECT_EQ(a.next, &b);
+    EXPECT_EQ(b.next, &c);
+    EXPECT_EQ(level.tail, &c);
+}
+
+
+// test 15
+// Test FIFO remove order
+TEST(PriceLevelTest, FIFORemoveMiddle) {
+    PriceLevel level{};
+    Order a{}, b{}, c{};
+
+    level.fifoPush(&a);
+    level.fifoPush(&b);
+    level.fifoPush(&c);
+
+    level.fifoRemove(&b);
+
+    EXPECT_EQ(a.next, &c);
+    EXPECT_EQ(c.prev, &a);
+    EXPECT_EQ(level.head, &a);
+    EXPECT_EQ(level.tail, &c);
+}
+
+
+// test 16
+// consumeOrder() (OrderBook)
+TEST(OrderBookTest, ConsumeOrder) {
+    OrderBook *book = new OrderBook();
+
+    Order o{};
+    o.side = Side::BUY;        // or SELL
+    o.price = 100;
+    o.remaining = 100;
+
+    // Create price level first
+    PriceLevel* level = book->getOrCreatePriceLevel(o.side, o.price);
+    level->aggregated_qty = 100;
+
+    book->consumeOrder(&o, 40);
+
+    EXPECT_EQ(o.remaining, 60);
+    EXPECT_EQ(level->aggregated_qty, 60);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// -----------------functions that call independent functions test-----------------
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+// test 1
+// insertOrder()
+TEST(OrderBookTest, InsertOrderCreatesPriceLevel) {
+    OrderBook *book = new OrderBook();
+
+    Order* o = book->requestAllocationOfOrder();
+    *o = {1, 1, Side::BUY, OrderType::LIMIT, 10, 100, 100, 0, OrderState::NEW, nullptr, nullptr};
+
+    book->insertOrder(o);
+
+    ASSERT_EQ(book->buy_book.size(), 1);
+    EXPECT_EQ(book->buy_book.find(10)->aggregated_qty, 100);
+}
+
+
+// test 2
+// removeOrder()
+TEST(OrderBookTest, RemoveOrderDeletesPriceLevel) {
+    OrderBook *book = new OrderBook();
+
+    Order* o = book->requestAllocationOfOrder();
+    *o = {1, 1, Side::SELL, OrderType::LIMIT, 20, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
+
+    book->insertOrder(o);
+    book->removeOrder(o);
+
+    EXPECT_TRUE(book->sell_book.empty());
+}
+
+
+// test 3
+// getOrderAtBestPrice()
+TEST(OrderBookTest, GetOrderAtBestPrice) {
+    OrderBook *book = new OrderBook();
+
+    Order* o1 = book->requestAllocationOfOrder();
+    *o1 = {1,1,Side::SELL,OrderType::LIMIT,20,50,50,0,OrderState::NEW,nullptr,nullptr};
+
+    Order* o2 = book->requestAllocationOfOrder();
+    *o2 = {2,1,Side::SELL,OrderType::LIMIT,10,50,50,0,OrderState::NEW,nullptr,nullptr};
+
+    book->insertOrder(o1);
+    book->insertOrder(o2);
+
+    Order* best = book->getOrderAtBestPrice(Side::SELL);
+    EXPECT_EQ(best->price, 10);
+}
+
+
+// test 4
+// match() (without crossing)
+TEST(MatchingEngineUnitTest, MatchStopsOnNoCross) {
+    MatchingEngine *engine = new MatchingEngine(8);
+
+    Order* buy = engine->order_book.requestAllocationOfOrder();
+    *buy = {1,1,Side::BUY,OrderType::LIMIT,10,100,100,0,OrderState::NEW,nullptr,nullptr};
+
+    engine->match(buy);
+
+    EXPECT_EQ(buy->remaining, 100);
+}
+
+
+// test 5
+// executeTrade() (WAL side-effect only)
+TEST(MatchingEngineUnitTest, ExecuteTradeDoesNotMutateOrders) {
+    MatchingEngine *engine = new MatchingEngine(9);
+
+    Order a{}, b{};
+    a.remaining = 50;
+    b.remaining = 50;
+
+    engine->executeTrade(&a, &b, 10, 20);
+
+    EXPECT_EQ(a.remaining, 50);
+    EXPECT_EQ(b.remaining, 50);
+}
+
+
+// test 6
+// onNewOrder()
+TEST(MatchingEngineUnitTest, OnNewOrderRestingLimit) {
+    MatchingEngine *engine = new MatchingEngine(10);
+
+    Order* o = engine->order_book.requestAllocationOfOrder();
+    *o = {1,1,Side::BUY,OrderType::LIMIT,10,100,100,0,OrderState::NEW,nullptr,nullptr};
+
+    bool ok = engine->onNewOrder(o);
+
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(engine->order_book.buy_book.size(), 1);
+}
+
+
+// test 7
+// Cancel filled order
+TEST(MatchingEngineUnitTest, CancelFilledOrderFails) {
+    MatchingEngine *engine = new MatchingEngine(11);
+
+    Order* o = engine->order_book.requestAllocationOfOrder();
+    *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
+
+    bool ok = engine->onCancelOrder(1);
+    EXPECT_FALSE(ok);
+}
+
+
+// test 8
+// Modify non-existent order
+TEST(MatchingEngineUnitTest, ModifyNonExistentOrder) {
+    MatchingEngine *engine = new MatchingEngine(12);
+    EXPECT_FALSE(engine->onModifyOrder(999, 10, 100));
+}
+
+
+// test 9
+// Modify filled order fails safely
+TEST(MatchingEngineTest, ModifyFilledOrderFails) {
+    MatchingEngine *engine = new MatchingEngine(13);
+
+    Order* o = engine->order_book.requestAllocationOfOrder();
+    *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
+
+    EXPECT_FALSE(engine->onModifyOrder(1, 20, 100));
+}
+
+
+// test 10
+// Reduce quantity only (same price)
+TEST(MatchingEngineTest, ModifyReduceQuantitySamePrice) {
+    MatchingEngine *engine = new MatchingEngine(14);
+
+    Order* o = engine->order_book.requestAllocationOfOrder();
+    *o = {1,1,Side::BUY,OrderType::LIMIT,10,100,100,0,OrderState::NEW,nullptr,nullptr};
+    engine->onNewOrder(o);
+
+    bool ok = engine->onModifyOrder(1, 10, 60);
+    EXPECT_TRUE(ok);
+
+    Order* updated = engine->order_book.findOrder(1);
+    ASSERT_NE(updated, nullptr);
+    EXPECT_EQ(updated->quantity, 60);
+    EXPECT_EQ(updated->remaining, 60);
+}
+
+
+// test 11
+// Modify causes cancel + reinsert
+TEST(MatchingEngineTest, ModifyPriceCausesReinsert) {
+    MatchingEngine *engine = new MatchingEngine(15);
+
+    Order* o = engine->order_book.requestAllocationOfOrder();
+    *o = {1,1,Side::BUY,OrderType::LIMIT,10,100,100,0,OrderState::NEW,nullptr,nullptr};
+    engine->onNewOrder(o);
+
+    bool ok = engine->onModifyOrder(1, 20, 200);
+    EXPECT_TRUE(ok);
+
+    EXPECT_EQ(engine->order_book.buy_book.size(), 1);
+    EXPECT_NE(engine->order_book.buy_book.find(20),
+              nullptr);
+}
+
+
+
+// ///////////////////////////////////////////////////////////////////////////
+// -------------------------------logical tests-------------------------------
+// ///////////////////////////////////////////////////////////////////////////
+
+
+
+// test 1
 /*
 What this test guarantees
 	•	Deterministic clean startup
@@ -11,7 +446,7 @@ What this test guarantees
 	•	Pool is untouched
 */
 TEST(MatchingEngineTest, EmptyBookOnStartup) {
-    MatchingEngine *engine = new MatchingEngine(1);
+    MatchingEngine *engine = new MatchingEngine(16);
     // Buy & sell ladders must be empty
     EXPECT_TRUE(engine->order_book.buy_book.empty());
     EXPECT_TRUE(engine->order_book.sell_book.empty());
@@ -22,7 +457,7 @@ TEST(MatchingEngineTest, EmptyBookOnStartup) {
 }
 
 
-// test 2(unit test)
+// test 2
 /*
 What this test validates
 	•	Pool allocation works
@@ -33,7 +468,7 @@ What this test validates
 	•	No accidental matching
 */
 TEST(MatchingEngineTest, InsertBuyLimitNoMatch) {
-    MatchingEngine *engine = new MatchingEngine(2);
+    MatchingEngine *engine = new MatchingEngine(17);
 
     // Allocate order from pool (MANDATORY)
     Order* o = engine->order_book.requestAllocationOfOrder();
@@ -80,7 +515,7 @@ TEST(MatchingEngineTest, InsertBuyLimitNoMatch) {
 }
 
 
-// test 3(logic test)
+// test 3
 /*
 This test mirrors Test 2 but on the sell side, and it validates:
 	•	Sell ladder insertion
@@ -89,7 +524,7 @@ This test mirrors Test 2 but on the sell side, and it validates:
 	•	FIFO correctness on sell side
 */
 TEST(MatchingEngineTest, InsertSellLimitNoMatch) {
-    MatchingEngine *engine = new MatchingEngine(3);  // any uint64_t symbol is fine
+    MatchingEngine *engine = new MatchingEngine(18);  // any uint64_t symbol is fine
 
     // Allocate order from pool
     Order* o = engine->order_book.requestAllocationOfOrder();
@@ -136,7 +571,7 @@ TEST(MatchingEngineTest, InsertSellLimitNoMatch) {
 }
 
 
-// test 4(logic test)
+// test 4
 /*
 What this test validates
 	•	Crossing logic (>= / <=)
@@ -147,7 +582,7 @@ What this test validates
 	•	Pool deallocation safety
 */
 TEST(MatchingEngineTest, ExactPriceCrossFullFill) {
-    MatchingEngine *engine = new MatchingEngine(4);
+    MatchingEngine *engine = new MatchingEngine(19);
 
     // ---- Insert SELL order first ----
     Order* sell = engine->order_book.requestAllocationOfOrder();
@@ -199,7 +634,7 @@ TEST(MatchingEngineTest, ExactPriceCrossFullFill) {
 }
 
 
-// test 5(logic test)
+// test 5
 /*
 This test validates that:
 	•	Only part of a resting order is consumed
@@ -208,7 +643,7 @@ This test validates that:
 	•	Best bid / ask is preserved
 */
 TEST(MatchingEngineTest, PartialFillSingleLevel) {
-    MatchingEngine *engine = new MatchingEngine(5);
+    MatchingEngine *engine = new MatchingEngine(20);
 
     // ---- Insert SELL order ----
     Order* sell = engine->order_book.requestAllocationOfOrder();
@@ -270,17 +705,17 @@ TEST(MatchingEngineTest, PartialFillSingleLevel) {
 }
 
 
-// test 6(logic test)
+// test 6
 /*
 What this test validates
 	•	Intrusive FIFO list correctness
-	•	fifo_push order
+	•	fifoPush order
 	•	fifo_remove correctness
 	•	Matching loop respects FIFO
 	•	No pointer corruption
 */
 TEST(MatchingEngineTest, FIFOAtSamePriceLevel) {
-    MatchingEngine *engine = new MatchingEngine(6);
+    MatchingEngine *engine = new MatchingEngine(21);
 
     // ---- SELL order 1 (earlier) ----
     Order* sell1 = engine->order_book.requestAllocationOfOrder();
@@ -353,7 +788,7 @@ TEST(MatchingEngineTest, FIFOAtSamePriceLevel) {
 }
 
 
-// test 7(logic test)
+// test 7
 /*
 What this test validates
 	•	Correct best-price selection
@@ -362,7 +797,7 @@ What this test validates
 	•	No FIFO leakage across price levels
 */
 TEST(MatchingEngineTest, PricePriorityAcrossLevels) {
-    MatchingEngine *engine = new MatchingEngine(7);
+    MatchingEngine *engine = new MatchingEngine(22);
 
     // ---- SELL @ 10 ----
     Order* sell10 = engine->order_book.requestAllocationOfOrder();
@@ -432,7 +867,7 @@ TEST(MatchingEngineTest, PricePriorityAcrossLevels) {
 }
 
 
-// test 8(logic test)
+// test 8
 /*
 What this test validates
 	•	Market order path
@@ -442,7 +877,7 @@ What this test validates
 	•	Book integrity after sweep
 */
 TEST(MatchingEngineTest, MarketOrderSweep) {
-    MatchingEngine *engine = new MatchingEngine(8);
+    MatchingEngine *engine = new MatchingEngine(23);
 
     // ---- SELL @ 10 ----
     Order* sell10 = engine->order_book.requestAllocationOfOrder();
@@ -516,7 +951,7 @@ TEST(MatchingEngineTest, MarketOrderSweep) {
 }
 
 
-// test 9(logic test)
+// test 9
 /*
 it must:
 	•	Remove the order from FIFO correctly
@@ -533,7 +968,7 @@ Expected behavior
 	•	No crash, no dangling pointers
 */
 TEST(MatchingEngineTest, CancelRestingOrder) {
-    MatchingEngine *engine = new MatchingEngine(9);
+    MatchingEngine *engine = new MatchingEngine(24);
 
     // ---- Insert BUY order ----
     Order* buy = engine->order_book.requestAllocationOfOrder();
@@ -573,7 +1008,7 @@ TEST(MatchingEngineTest, CancelRestingOrder) {
 }
 
 
-// test 10(logic test)
+// test 10
 /*
 This test ensures:
 	•	Old order is fully removed
@@ -582,7 +1017,7 @@ This test ensures:
 	•	New price level is respected
 */
 TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
-    MatchingEngine *engine = new MatchingEngine(10);
+    MatchingEngine *engine = new MatchingEngine(25);
 
     // ---- Insert original BUY order ----
     Order* buy = engine->order_book.requestAllocationOfOrder();
@@ -640,20 +1075,20 @@ TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
 }
 
 
-// test 11(logic test)
+// test 11
 // test to cancel non-existing orders
 TEST(MatchingEngineTest, CancelNonExistentOrder) {
-    MatchingEngine *engine = new MatchingEngine(11);
+    MatchingEngine *engine = new MatchingEngine(26);
     engine->onCancelOrder(999);  // should not crash
     EXPECT_TRUE(engine->order_book.buy_book.empty());
     EXPECT_TRUE(engine->order_book.sell_book.empty());
 }
 
 
-// test 12(logic test)
+// test 12
 // test to place market order on empty order book
 TEST(MatchingEngineTest, MarketOrderOnEmptyBook) {
-    MatchingEngine *engine = new MatchingEngine(12);
+    MatchingEngine *engine = new MatchingEngine(27);
 
     Order* buy = engine->order_book.requestAllocationOfOrder();
     ASSERT_NE(buy, nullptr);
@@ -671,7 +1106,175 @@ TEST(MatchingEngineTest, MarketOrderOnEmptyBook) {
 }
 
 
-// test 13(wal test)
+
+//////////////////////////////////////////////////////////////////////////////
+// ---------------------------------wal tests---------------------------------
+//////////////////////////////////////////////////////////////////////////////
+
+
+
+// test 1
+// logInput() — ADD correctness
+TEST(WALTest, LogInputWritesAddEntry) {
+    WALSystem *wal = new WALSystem(walPath(1));
+
+    Order o{};
+    o.order_id = 1;
+    o.user_id = 42;
+    o.side = Side::BUY;
+    o.type = OrderType::LIMIT;
+    o.price = 10;
+    o.quantity = 100;
+    o.remaining = 100;
+    o.timestamp = 5;
+    o.state = OrderState::NEW;
+
+    wal->logInput(WalAction::ADD, &o);
+
+    std::vector<LogEntry> entries;
+    wal->recover([&](const LogEntry& e) {
+        entries.push_back(e);
+    });
+
+    ASSERT_EQ(entries.size(), 1);
+    EXPECT_EQ(entries[0].action, WalAction::ADD);
+    EXPECT_EQ(entries[0].data.order_id, 1);
+    EXPECT_EQ(entries[0].data.price, 10);
+    EXPECT_EQ(entries[0].data.quantity, 100);
+}
+
+
+// test 2
+// logModify() — MODIFY correctness
+TEST(WALTest, LogModifyWritesModifyEntry) {
+    WALSystem *wal = new WALSystem(walPath(2));
+
+    wal->logModify(7, 25, 300);
+
+    std::vector<LogEntry> entries;
+    wal->recover([&](const LogEntry& e) {
+        entries.push_back(e);
+    });
+
+    ASSERT_EQ(entries.size(), 1);
+    EXPECT_EQ(entries[0].action, WalAction::MODIFY);
+    EXPECT_EQ(entries[0].data.order_id, 7);
+    EXPECT_EQ(entries[0].data.price, 25);
+    EXPECT_EQ(entries[0].data.quantity, 300);
+}
+
+
+// test 3
+// logCancel() — CANCEL correctness
+TEST(WALTest, LogCancelWritesCancelEntry) {
+    WALSystem *wal = new WALSystem(walPath(3));
+
+    wal->logCancel(99);
+
+    std::vector<LogEntry> entries;
+    wal->recover([&](const LogEntry& e) {
+        entries.push_back(e);
+    });
+
+    ASSERT_EQ(entries.size(), 1);
+    EXPECT_EQ(entries[0].action, WalAction::CANCEL);
+    EXPECT_EQ(entries[0].data.order_id, 99);
+}
+
+
+// test 4
+// WAL append behavior (multiple calls)
+TEST(WALTest, MultipleEntriesAppendInOrder) {
+    WALSystem *wal = new WALSystem(walPath(4));
+
+    wal->logCancel(1);
+    wal->logModify(2, 20, 200);
+    wal->logCancel(3);
+
+    std::vector<LogEntry> entries;
+    wal->recover([&](const LogEntry& e) {
+        entries.push_back(e);
+    });
+
+    ASSERT_EQ(entries.size(), 3);
+    EXPECT_EQ(entries[0].data.order_id, 1);
+    EXPECT_EQ(entries[1].data.order_id, 2);
+    EXPECT_EQ(entries[2].data.order_id, 3);
+}
+
+
+// test 5
+// recover() — sequential replay correctness
+TEST(WALTest, RecoverReplaysSequentially) {
+    WALSystem *wal = new WALSystem(walPath(5));
+
+    wal->logCancel(10);
+    wal->logCancel(20);
+    wal->logCancel(30);
+
+    std::vector<OrderId> ids;
+    wal->recover([&](const LogEntry& e) {
+        ids.push_back(e.data.order_id);
+    });
+
+    ASSERT_EQ(ids.size(), 3);
+    EXPECT_EQ(ids[0], 10);
+    EXPECT_EQ(ids[1], 20);
+    EXPECT_EQ(ids[2], 30);
+}
+
+
+// test 6
+// recover() on missing WAL file
+TEST(WALTest, RecoverOnMissingFileDoesNothing) {
+    WALSystem *wal = new WALSystem("non_existent_wal_file");
+
+    int count = 0;
+    wal->recover([&](const LogEntry&) {
+        count++;
+    });
+
+    EXPECT_EQ(count, 0);
+}
+
+
+// test 7
+// ogTrade() — trade file correctness
+TEST(WALTest, LogTradeWritesTradeFile) {
+    std::string base = walPath(6);
+    WALSystem *wal = new WALSystem(base);
+
+    wal->logTrade(1, 2, 100, 50);
+
+    std::ifstream file(base + ".trades");
+    ASSERT_TRUE(file.is_open());
+
+    std::string line;
+    std::getline(file, line);
+
+    EXPECT_EQ(line, "1,2,100,50");
+}
+
+
+// test 8
+// WAL + Trade independence
+TEST(WALTest, TradeLoggingDoesNotAffectWAL) {
+    WALSystem *wal = new WALSystem(walPath(7));
+
+    wal->logTrade(1, 2, 10, 5);
+    wal->logCancel(42);
+
+    std::vector<LogEntry> entries;
+    wal->recover([&](const LogEntry& e) {
+        entries.push_back(e);
+    });
+
+    ASSERT_EQ(entries.size(), 1);
+    EXPECT_EQ(entries[0].action, WalAction::CANCEL);
+}
+
+
+// test 9
 /*
 What this test PROVES
 
@@ -683,7 +1286,7 @@ What this test PROVES
 */
 TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
     {
-        MatchingEngine *engine = new MatchingEngine(13);
+        MatchingEngine *engine = new MatchingEngine(28);
 
         // ADD BUY
         Order* buy = engine->order_book.requestAllocationOfOrder();
@@ -720,7 +1323,7 @@ TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
 
     // Read WAL
     std::vector<LogEntry> entries;
-    WALSystem wal("engine_" + std::to_string(13));
+    WALSystem wal("engine_" + std::to_string(28));
     wal.recover([&](const LogEntry& entry) {
         entries.push_back(entry);
     });
@@ -739,7 +1342,7 @@ TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
 }
 
 
-// test 14(wal test)
+// test 10
 /*
 This validates:
 	•	Determinism
@@ -751,7 +1354,7 @@ This validates:
 TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     // -------- First run (generate WAL) --------
     {
-        MatchingEngine *engine = new MatchingEngine(14);
+        MatchingEngine *engine = new MatchingEngine(29);
 
         // SELL 100 @ 10
         Order* s1 = engine->order_book.requestAllocationOfOrder();
@@ -773,7 +1376,7 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     }
 
     // -------- Recovery run --------
-    MatchingEngine *recovered = new MatchingEngine(14);
+    MatchingEngine *recovered = new MatchingEngine(29);
 
     // -------- Assertions --------
 
@@ -806,13 +1409,3 @@ int main(int argc,char* argv[]){
     testing::InitGoogleTest(&argc,argv);
     return RUN_ALL_TESTS();
 }
-
-
-/*
-follow the below instructions before testing
-- make order_book public in MatchingEngine.h
-- make buy_book public in OrderBook.h
-- make sell_book public in OrderBook.h
-- make best_bid public in OrderBook.h
-- make best_ask public in OrderBook.h
-*/
