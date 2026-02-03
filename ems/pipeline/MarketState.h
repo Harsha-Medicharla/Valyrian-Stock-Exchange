@@ -21,6 +21,11 @@ public:
         }
     }
 
+    inline size_t symbolCount() const noexcept
+    {
+        return open_.size();
+    }
+
     inline bool isSymbolOpen(uint32_t symbolId) const noexcept
     {
         if (symbolId >= open_.size())

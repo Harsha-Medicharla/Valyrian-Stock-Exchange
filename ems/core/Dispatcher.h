@@ -1,10 +1,15 @@
 #pragma once
 #include <thread>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include "../queues/MPSCRingBuffer.h"
+#include "../queues/SequenceStateBuffer.h"
+#include "../config/EMSConfig.h"
 #include <pthread.h>
 #include <sched.h>
 #include "../utils/SpinWait.h"
+#include "../types/OrderSlot.h"
 #include "MatchingEngine.h"
 
 class Dispatcher
@@ -12,54 +17,57 @@ class Dispatcher
 private:
     uint32_t symbolId_;
     MPSCRingBuffer &ring_;
+    SequenceStateBuffer &rejectedStates_;
     MatchingEngine &engine_;
     int coreId_;
     std::thread thread_;
     std::atomic<bool> running_;
-    uint64_t nextSequence_;
+    uint64_t nextServerSequence_;
 
-    void run()
+    static constexpr uint64_t kMask = static_cast<uint64_t>(EMSConfig::MPSC_BUFFER_SIZE - 1);
+    static constexpr uint64_t kCapacity = static_cast<uint64_t>(EMSConfig::MPSC_BUFFER_SIZE);
+
+    [[nodiscard]] inline uint64_t mapServerToRingSeq(uint64_t serverSeq) const noexcept
+    {
+        // If serverSeq starts at 1, but ring is 0-indexed:
+        return (serverSeq - 1) & kMask;
+    }
+
+    void run() noexcept
     {
         pinToCore();
 
         while (running_.load(std::memory_order_relaxed))
         {
-
-            uint64_t cursor = ring_.cursor();
-            uint64_t highest = ring_.getHighestPublished(nextSequence_, cursor);
-
-            if (highest >= nextSequence_)
+            if (rejectedStates_.tryConsumeRejected(nextServerSequence_))
             {
+                ++nextServerSequence_;
+                continue;
+            }
 
-                for (uint64_t seq = nextSequence_; seq <= highest; seq++)
+            const uint64_t ringSeq = mapServerToRingSeq(nextServerSequence_);
+            if (ring_.isAvailable(ringSeq))
+            {
+                OrderSlot &slot = ring_.get(ringSeq);
+                if (slot.sequence != nextServerSequence_)
                 {
-
-                    OrderSlot &slot = ring_.get(seq);
-
-                    engine_.onNewOrder(
-                        slot.symbol_id,
-                        slot.price,
-                        slot.qty,
-                        slot.side,
-                        slot.type,
-                        slot.user_id,
-                        slot.sequence);
-
-                    ring_.releaseSlot(seq);
+                    ems::pause();
+                    continue;
                 }
 
-                nextSequence_ = highest + 1;
+                engine_.onNewOrder(
+                    slot);
+                ring_.releaseSlot(ringSeq);
+                ++nextServerSequence_;
+                continue;
             }
-            else
-            {
-                ems::pause();
-            }
+
+            ems::pause();
         }
     }
 
-    void pinToCore()
+    void pinToCore() noexcept
     {
-// pthread affinity is Linux-specific; keep dispatcher portable.
 #if defined(__linux__)
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
@@ -75,29 +83,35 @@ private:
     }
 
 public:
-    inline Dispatcher(uint32_t symbolId, MPSCRingBuffer &ring, MatchingEngine &engine, int coreId)
+    inline Dispatcher(
+        uint32_t symbolId,
+        MPSCRingBuffer &ring,
+        SequenceStateBuffer &rejectedStates,
+        MatchingEngine &engine,
+        int coreId) noexcept
         : symbolId_(symbolId),
           ring_(ring),
+          rejectedStates_(rejectedStates),
           engine_(engine),
           coreId_(coreId),
           thread_(),
           running_(false),
-          nextSequence_(1)
+          nextServerSequence_(1)
     {
     }
 
-    inline void start()
+    inline void start() noexcept
     {
         running_.store(true, std::memory_order_release);
         thread_ = std::thread(&Dispatcher::run, this);
     }
 
-    inline void stop()
+    inline void stop() noexcept
     {
         running_.store(false, std::memory_order_release);
     }
 
-    inline void join()
+    inline void join() noexcept
     {
         if (thread_.joinable())
             thread_.join();

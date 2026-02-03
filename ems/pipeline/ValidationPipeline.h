@@ -1,23 +1,15 @@
 #pragma once
+#include "../config/EMSConfig.h"
 #include "../types/RawOrder.h"
 #include "../types/Common.h"
 #include "RateLimiter.h"
 #include "MarketState.h"
 
-
-constexpr int64_t kMinPrice = 1;
-constexpr int64_t kMaxPrice = 1'000'000'000;
-constexpr uint32_t kMinQty = 1;
-constexpr uint32_t kMaxQty = 1'000'000'000;
-// Domain placeholders. Keep them const/constexpr so the compiler can fold.
-constexpr int64_t kTickSize = 1;
-constexpr uint32_t kLotSize = 1;
-
-
 class ValidationPipeline
 {
 private:
-    bool checkFatFinger(const RawOrder *o) const noexcept;
+    bool checkBasicValidity(const RawOrder *o) const noexcept;
+    bool checkFatFingerNotional(const RawOrder *o) const noexcept;
     bool checkMarketState(const RawOrder *o) const noexcept;
     bool checkRateLimit(const RawOrder *o) noexcept;
     bool checkTickSize(const RawOrder *o) const noexcept;
@@ -42,14 +34,19 @@ inline ValidationPipeline::ValidationPipeline(RateLimiter &rl, MarketState &ms)
 
 inline Decision ValidationPipeline::process(const RawOrder *o, RejectReason &r)
 {
-    // Fail-fast null guard (should never happen on hot path).
     if (!o)
     {
-        r = RejectReason::FAT_FINGER;
+        r = RejectReason::INVALID_RANGE;
         return Decision::REJECT;
     }
 
-    if (!checkFatFinger(o))
+    if (!checkBasicValidity(o))
+    {
+        r = RejectReason::INVALID_RANGE;
+        return Decision::REJECT;
+    }
+
+    if (!checkFatFingerNotional(o))
     {
         r = RejectReason::FAT_FINGER;
         return Decision::REJECT;
@@ -87,24 +84,34 @@ inline void ValidationPipeline::decay() noexcept
     rateLimiter_.decay();
 }
 
-inline bool ValidationPipeline::checkFatFinger(const RawOrder *o) const noexcept
+inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noexcept
 {
     if (!o)
         return false;
 
-    // Basic sanity checks; ensures deterministic rejection reasons.
-    if (o->price < kMinPrice || o->price > kMaxPrice)
-        return false;
-    if (o->qty < kMinQty || o->qty > kMaxQty)
+    if (o->symbol_id >= marketState_.symbolCount())
         return false;
 
-    // Validate enum-like fields are in-range.
+    if (o->price < EMSConfig::MIN_PRICE || o->price > EMSConfig::MAX_PRICE)
+        return false;
+    if (o->qty < EMSConfig::MIN_QTY || o->qty > EMSConfig::MAX_QTY)
+        return false;
+
     if (o->side > 1)
         return false;
     if (o->type > 1)
         return false;
 
     return true;
+}
+
+inline bool ValidationPipeline::checkFatFingerNotional(const RawOrder *o) const noexcept
+{
+    if (!o)
+        return false;
+
+    const int64_t notional = o->price * static_cast<int64_t>(o->qty);
+    return notional <= EMSConfig::FAT_FINGER_LIMIT;
 }
 
 inline bool ValidationPipeline::checkMarketState(const RawOrder *o) const noexcept
@@ -119,12 +126,10 @@ inline bool ValidationPipeline::checkRateLimit(const RawOrder *o) noexcept
 
 inline bool ValidationPipeline::checkTickSize(const RawOrder *o) const noexcept
 {
-    // Tick size check (placeholder: kTickSize defaults to 1).
-    return (o->price % kTickSize) == 0;
+    return (o->price % EMSConfig::TICK_SIZE) == 0;
 }
 
 inline bool ValidationPipeline::checkLotSize(const RawOrder *o) const noexcept
 {
-    // Lot size check (placeholder: kLotSize defaults to 1).
-    return (o->qty % kLotSize) == 0;
+    return (o->qty % EMSConfig::LOT_SIZE) == 0;
 }
