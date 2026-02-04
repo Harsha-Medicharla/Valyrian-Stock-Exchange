@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "../queues/MPSCRingBuffer.h"
-#include "../queues/SequenceStateBuffer.h"
+#include "../queues/RejectionBitset.h"
 #include "../config/EMSConfig.h"
 #include <pthread.h>
 #include <sched.h>
@@ -15,9 +15,9 @@
 class Dispatcher
 {
 private:
-    uint32_t symbolId_;
+    [[maybe_unused]] uint32_t symbolId_;
     MPSCRingBuffer &ring_;
-    SequenceStateBuffer &rejectedStates_;
+    RejectionBitset &rejectedStates_;
     MatchingEngine &engine_;
     int coreId_;
     std::thread thread_;
@@ -25,7 +25,6 @@ private:
     uint64_t nextServerSequence_;
 
     static constexpr uint64_t kMask = static_cast<uint64_t>(EMSConfig::MPSC_BUFFER_SIZE - 1);
-    static constexpr uint64_t kCapacity = static_cast<uint64_t>(EMSConfig::MPSC_BUFFER_SIZE);
 
     [[nodiscard]] inline uint64_t mapServerToRingSeq(uint64_t serverSeq) const noexcept
     {
@@ -86,7 +85,7 @@ public:
     inline Dispatcher(
         uint32_t symbolId,
         MPSCRingBuffer &ring,
-        SequenceStateBuffer &rejectedStates,
+        RejectionBitset &rejectedStates,
         MatchingEngine &engine,
         int coreId) noexcept
         : symbolId_(symbolId),

@@ -5,7 +5,7 @@
 #include <vector>
 #include "../queues/SPSCQueueWrapper.h"
 #include "../queues/MPSCRingBuffer.h"
-#include "../queues/SequenceStateBuffer.h"
+#include "../queues/RejectionBitset.h"
 #include "../pipeline/MarketState.h"
 #include "../pipeline/RateLimiter.h"
 #include "../pipeline/ValidationPipeline.h"
@@ -22,16 +22,12 @@ private:
     ValidationPipeline pipeline_;
     SymbolRouter &router_;
     std::vector<MPSCRingBuffer> &ringBuffers_;
-    std::vector<std::unique_ptr<SequenceStateBuffer>> &rejectedStateBuffers_;
-    MarketState &marketState_;
+    std::vector<std::unique_ptr<RejectionBitset>> &rejectedStateBuffers_;
     std::thread thread_;
     std::atomic<bool> running_;
-    uint64_t opsSinceDecay_;
 
     void run()
     {
-        static constexpr uint64_t kDecayEveryOps = 1u << 16;
-
         while (running_.load(std::memory_order_relaxed))
         {
             RawOrder *slot = nullptr;
@@ -39,11 +35,6 @@ private:
             if (queue_.pop(slot))
             {
                 if (slot->sequence == 0)
-                {
-                    RejectHandler::invoke(slot->user_id, RejectReason::INVALID_RANGE);
-                    queue_.releaseSlot();
-                }
-                else if (slot->symbol_id >= marketState_.symbolCount())
                 {
                     RejectHandler::invoke(slot->user_id, RejectReason::INVALID_RANGE);
                     queue_.releaseSlot();
@@ -66,7 +57,6 @@ private:
                         uint64_t ringSeq = 0;
                         OrderSlot *out = rb.claimSlot(ringSeq);
                         out->sequence = slot->sequence;
-                        out->state = OrderSlotState::Valid;
                         out->order_id = slot->order_id;
                         out->timestamp = slot->timestamp;
                         out->user_id = slot->user_id;
@@ -79,12 +69,6 @@ private:
                     }
 
                     queue_.releaseSlot();
-                }
-
-                if (++opsSinceDecay_ >= kDecayEveryOps)
-                {
-                    pipeline_.decay();
-                    opsSinceDecay_ = 0;
                 }
             }
             else
@@ -100,7 +84,7 @@ public:
         RateLimiter &rateLimiter,
         SymbolRouter &router,
         std::vector<MPSCRingBuffer> &ringBuffers,
-        std::vector<std::unique_ptr<SequenceStateBuffer>> &rejectedStateBuffers,
+        std::vector<std::unique_ptr<RejectionBitset>> &rejectedStateBuffers,
         MarketState &marketState) noexcept
         : queue_(queue),
           rateLimiter_(rateLimiter),
@@ -108,10 +92,8 @@ public:
           router_(router),
           ringBuffers_(ringBuffers),
           rejectedStateBuffers_(rejectedStateBuffers),
-          marketState_(marketState),
           thread_(),
-          running_(false),
-          opsSinceDecay_(0)
+          running_(false)
     {
     }
 

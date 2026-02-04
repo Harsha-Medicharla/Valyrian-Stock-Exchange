@@ -8,7 +8,6 @@ class SPSCQueueWrapper
 {
 private:
     std::unique_ptr<rigtorp::SPSCQueue<RawOrder>> queue_;
-    RawOrder staged_{};
 
 public:
     inline explicit SPSCQueueWrapper(size_t size)
@@ -21,28 +20,24 @@ public:
     SPSCQueueWrapper(SPSCQueueWrapper &&) noexcept = default;
     SPSCQueueWrapper &operator=(SPSCQueueWrapper &&) noexcept = default;
 
-    inline RawOrder *claimSlot() noexcept
+    inline bool enqueue(const RawOrder &order) noexcept
     {
-        // We stage into stack-owned memory and publish atomically via underlying queue.
-        return &staged_;
+        return queue_->try_push(order);
     }
 
-    inline void publish() noexcept
+    [[nodiscard]] inline bool pop(RawOrder *&out) noexcept
     {
-        queue_->push(staged_);
-    }
-
-    inline bool pop(RawOrder *&out) noexcept
-    {
-        RawOrder *front = queue_->front();
-        if (front == nullptr)
-            return false;
-        out = front;
-        return true;
+        out = queue_->front();
+        return out != nullptr;
     }
 
     inline void releaseSlot() noexcept
     {
         queue_->pop();
+    }
+
+    [[nodiscard]] inline bool empty() const noexcept
+    {
+        return queue_->empty();
     }
 };

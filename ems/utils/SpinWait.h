@@ -15,20 +15,20 @@
 namespace ems
 {
 
-    inline void pause() noexcept
-    {
+        inline void pause() noexcept
+        {
 #if defined(__i386__) || defined(__x86_64__)
-        // _mm_pause is x86/x64 specific.
-        // (Include guarded at compile-time below.)
-        _mm_pause();
+                // _mm_pause is x86/x64 specific.
+                // (Include guarded at compile-time below.)
+                _mm_pause();
 #else
 // ARM/yield hint when available; otherwise a compiler barrier.
 #if defined(__aarch64__) || defined(__arm__)
-        __asm__ __volatile__("yield" ::: "memory");
+                __asm__ __volatile__("yield" ::: "memory");
 #else
-        __asm__ __volatile__("" ::: "memory");
+                __asm__ __volatile__("" ::: "memory");
 #endif
 #endif
-    }
+        }
 
 }

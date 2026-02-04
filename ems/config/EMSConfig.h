@@ -19,6 +19,7 @@ namespace EMSConfig
 
     inline constexpr std::size_t SPSC_BUFFER_SIZE = 1u << 12;
     inline constexpr std::size_t MPSC_BUFFER_SIZE = 1u << 12;
+    inline constexpr std::size_t REJECTION_WORDS = MPSC_BUFFER_SIZE / 64;
 
     inline constexpr int DISPATCHER_BASE_CORE = 2;
 
@@ -27,5 +28,4 @@ namespace EMSConfig
     inline constexpr uint32_t MIN_QTY = 1;
     inline constexpr uint32_t MAX_QTY = 1'000'000'000;
 
-    inline constexpr uint64_t RATE_LIMITER_DECAY_FACTOR = 2;
 }
