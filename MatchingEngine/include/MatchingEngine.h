@@ -33,7 +33,7 @@ public:
         order->timestamp = entry.data.timestamp;
         order->state = entry.data.state;
 
-        this->onNewOrder(order);
+        this->onNewOrder(order->order_id,order->user_id,order->side,order->type,order->price,order->quantity,order->timestamp);
       } else if (entry.action == WalAction::CANCEL) {
         this->onCancelOrder(entry.data.order_id);
       } else if (entry.action == WalAction::MODIFY) {
@@ -46,8 +46,18 @@ public:
 
   ~MatchingEngine() = default;
 
-  bool onNewOrder(Order *order)
+  bool onNewOrder(OrderId order_id, UserId user_id, Side side, OrderType type, Price price, Qty qty, TimeStamp timestamp)
   {
+    Order *order;
+    try
+    {
+      order = order_book.requestAllocationOfOrder();
+      *order = {order_id, user_id, side, type, price, qty, qty, timestamp, OrderState::NEW, nullptr, nullptr};
+    }
+    catch (const std::exception &e)
+    {
+      return false;
+    }
     if (!is_recovering)
     {
       try
@@ -69,7 +79,8 @@ public:
       updateOrderState(order);
 
       if (order->type == OrderType::MARKET or
-          order->state == OrderState::FILLED)
+          order->state == OrderState::FILLED or
+          order->state == OrderState::CANCELLED)
       {
         order_book.requestDeAllocationOfOrder(order);
       }
@@ -175,7 +186,7 @@ public:
                       OrderState::NEW, nullptr, nullptr};
         bool was_recovering = is_recovering;
         is_recovering = true;
-        bool success = onNewOrder(new_order);
+        bool success = onNewOrder(new_order->order_id, new_order->user_id, new_order->side, new_order->type, new_order->price, new_order->quantity, new_order->timestamp);
         is_recovering = was_recovering;
         return success;
       }
@@ -212,6 +223,25 @@ private:
         {
           break;
         }
+      }
+
+      if (incoming_order->user_id == resting_order->user_id)
+      {
+        if (!is_recovering)
+        {
+          try
+          {
+            wal.logCancel(incoming_order->order_id);
+          }
+          catch (const std::exception &e)
+          {
+            std::cerr << "[MatchingEngine] WAL Error in onCancelOrder: " << e.what()
+                      << std::endl;
+          }
+        }
+        incoming_order->remaining = 0;
+        incoming_order->state = OrderState::CANCELLED;
+        break;
       }
 
       Qty traded =
