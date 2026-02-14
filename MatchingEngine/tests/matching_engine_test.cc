@@ -9,7 +9,7 @@ static std::string walPath(int id) {
 
 /*
     before running this file,
- - make everything public in OrderBook.h and MatchingEngine->h
+ - make everything public in OrderBook.h and MatchingEngine.h
 */
 
 
