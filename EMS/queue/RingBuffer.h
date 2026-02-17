@@ -9,9 +9,9 @@ class RingBuffer {
     static_assert((Size & (Size - 1)) == 0, "Size must be power of 2");
 
 public:
+
     RingBuffer() : head_(0), tail_(0) {}
 
-    // Multiple Producers
     bool push(const T& item) {
         size_t head = head_.load(std::memory_order_relaxed);
 
@@ -19,7 +19,7 @@ public:
             size_t tail = tail_.load(std::memory_order_acquire);
 
             if (head - tail >= Size) {
-                return false; // buffer full
+                return false;
             }
 
             if (head_.compare_exchange_weak(
@@ -35,13 +35,12 @@ public:
         return true;
     }
 
-    // Single Consumer
     bool pop(T& item) {
         size_t tail = tail_.load(std::memory_order_relaxed);
         size_t head = head_.load(std::memory_order_acquire);
 
         if (tail == head) {
-            return false; // empty
+            return false;
         }
 
         item = buffer_[tail & mask_];
