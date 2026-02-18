@@ -9,6 +9,7 @@
 #include "../threading/IngressWorker.h"
 #include "../pipeline/EMSPipeline.h"
 #include "../model/OrderRequest.h"
+class MatchingEngine; 
 
 namespace EMS {
 

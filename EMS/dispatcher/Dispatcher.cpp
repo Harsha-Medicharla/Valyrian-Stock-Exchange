@@ -1,5 +1,8 @@
 #include "Dispatcher.h"
+#include "../../MatchingEngine/include/MatchingEngine.h"
+#include "../../MatchingEngine/include/Order.h" 
 #include <pthread.h>
+#include <immintrin.h>
 
 Dispatcher::Dispatcher(RingBuffer<EMS::model::OrderRequest, 1024>& queue,
                        MatchingEngine& engine)
@@ -21,23 +24,26 @@ void Dispatcher::join() {
 }
 
 void Dispatcher::run() {
-
-    // Optional: pin to core 2 (example)
     pinThreadToCore(2);
 
     EMS::model::OrderRequest req;
 
     while (true) {
-
-        // Fast path: process as many as possible
         while (queue_.pop(req)) {
-            engine_.onNewOrder(req);
+            Order* new_order = new Order();
+            new_order->order_id = req.order_id;
+            new_order->user_id = req.user_id;
+            new_order->side = req.side;
+            new_order->type = req.type;
+            new_order->price = req.price;
+            new_order->quantity = req.quantity;
+            new_order->remaining = req.quantity; 
+            new_order->timestamp = req.wall_time_ns;
+            engine_.onNewOrder(new_order);
         }
 
         if (!running_.load(std::memory_order_acquire))
             break;
-
-        // Spin pause
         _mm_pause();
     }
 }

@@ -6,7 +6,7 @@
 
 extern "C"
 {
-#include <libs/art/src/art.h>
+#include "art.h"
 }
 
 class AdaptiveRadixTree

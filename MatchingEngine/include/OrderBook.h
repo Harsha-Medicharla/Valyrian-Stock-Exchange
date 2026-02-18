@@ -12,7 +12,7 @@ inline TimeStamp getCurrentWallTime()
 
 class OrderBook
 {
-private:
+public:
   OrderPool order_pool;
   PriceLevelPool price_level_pool;
   absl::flat_hash_map<OrderId, Order *> order_index;
@@ -142,7 +142,8 @@ public:
     return it->second;
   }
 
-private:
+public:
+//private
   PriceLevel *getOrCreatePriceLevel(Side side, Price price)
   {
     auto &book = (side == Side::BUY) ? buy_book : sell_book;

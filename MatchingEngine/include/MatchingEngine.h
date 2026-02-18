@@ -5,7 +5,8 @@
 
 class MatchingEngine
 {
-private:
+public:
+
   Symbol symbol;
   TimeStamp time_stamp;
   WALSystem wal;
@@ -186,7 +187,8 @@ public:
     }
   }
 
-private:
+public:
+//private
   void match(Order *incoming_order) noexcept
   {
     Side opposite_side =

@@ -17,8 +17,8 @@ struct alignas(64) OrderRequest {
     Price     price;
     Qty       quantity;
 
-    uint64_t  wall_time_ns;   // real clock time
-    uint64_t  event_seq;      // ordering sequence
+    uint64_t  wall_time_ns; 
+    uint64_t  event_seq;
 };
 
 }

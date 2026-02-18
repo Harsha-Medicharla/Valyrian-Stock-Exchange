@@ -1,5 +1,5 @@
 #include "IngressWorker.h"
-
+#include <immintrin.h>
 namespace EMS {
 
 IngressWorker::IngressWorker(

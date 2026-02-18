@@ -11,8 +11,6 @@ EMS::EMS(size_t symbol_count,
     engines_.reserve(symbol_count_);
     dispatchers_.reserve(symbol_count_);
     queues_.reserve(symbol_count_);
-
-    // 1️⃣ Create per-symbol queues, engines, dispatchers
     for (size_t i = 0; i < symbol_count_; ++i) {
 
         auto queue = std::make_unique<
@@ -30,8 +28,6 @@ EMS::EMS(size_t symbol_count,
         engines_.push_back(std::move(engine));
         dispatchers_.push_back(std::move(dispatcher));
     }
-
-    // 2️⃣ Create ingress workers
     size_t ingress_count = std::thread::hardware_concurrency();
     if (ingress_count == 0)
         ingress_count = 4;
@@ -50,25 +46,20 @@ EMS::EMS(size_t symbol_count,
 
 void EMS::start()
 {
-    // Start ingress workers first
     for (auto& worker : ingress_workers_)
         worker->start();
 
-    // Start dispatchers
     for (auto& dispatcher : dispatchers_)
         dispatcher->start();
 }
 
 void EMS::stop()
 {
-    // Stop ingress workers
     for (auto& worker : ingress_workers_)
         worker->stop();
 
     for (auto& worker : ingress_workers_)
         worker->join();
-
-    // Stop dispatchers
     for (auto& dispatcher : dispatchers_)
         dispatcher->stop();
 
