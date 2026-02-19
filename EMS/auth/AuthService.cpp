@@ -1,11 +1,10 @@
-#pragma once
-#include <cstdint>
+#include "auth/AuthService.h"
 
 namespace EMS {
 
-class AuthService {
-public:
-    bool isAuthorized(uint64_t) const;
-};
+bool AuthService::isAuthorized(uint64_t user_id) const {
+    // Reject user 0, authorize everyone else
+    return user_id != 0;
+}
 
 }

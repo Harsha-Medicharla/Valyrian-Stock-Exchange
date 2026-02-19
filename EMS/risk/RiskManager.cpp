@@ -1,11 +1,9 @@
-#pragma once
-#include "../model/OrderRequest.h"
+#include "risk/RiskManager.h"
 
 namespace EMS {
 
-class RiskManager {
-public:
-    bool passesRisk(const model::OrderRequest&) const;
-};
+bool RiskManager::passesRisk(const model::OrderRequest& request) const {
+    return request.quantity <= 1000000;
+}
 
 }

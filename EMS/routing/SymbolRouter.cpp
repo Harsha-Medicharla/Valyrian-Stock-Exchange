@@ -1,9 +1,9 @@
-#include "SymbolRouter.h"
+#include "routing/SymbolRouter.h"
 
 namespace EMS {
 
-size_t SymbolRouter::route(uint64_t symbol) {
-    return 0;
+void SymbolRouter::route(const model::OrderRequest& request) {
+    // Placeholder: In the future, this will send the AAPL order to the AAPL order book thread.
 }
 
-} // namespace EMS
+}

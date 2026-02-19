@@ -1,12 +1,11 @@
 #pragma once
-#include <cstdint>
-#include <cstddef>
+#include "../model/OrderRequest.h"
 
 namespace EMS {
 
 class SymbolRouter {
 public:
-    size_t route(uint64_t symbol);
+    void route(const model::OrderRequest& request);
 };
 
-} // namespace EMS
+}

@@ -5,7 +5,7 @@ namespace EMS {
 
 class EMSOrderTracker {
 public:
-    void record(const model::OrderRequest&);
+    void trackNewOrder(const model::OrderRequest& request);
 };
 
 }

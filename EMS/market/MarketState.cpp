@@ -1,9 +1,9 @@
-#include "MarketState.h"
+#include "market/MarketState.h"
 
 namespace EMS {
 
-bool MarketState::isSymbolOpen(uint64_t) const {
-    return true;
+bool MarketState::isSymbolOpen(uint64_t symbol) const {
+    return symbol != 0;
 }
 
 }
