@@ -1,11 +1,9 @@
-#ifndef EMS_PIPELINE_H
-#define EMS_PIPELINE_H
+#pragma once
 
-#include "model/OrderRequest.h"
-#include "model/EMSDecision.h"
+#include "../model/OrderRequest.h"
+#include "../model/EMSDecision.h"
 
 namespace EMS {
-
 class AuthService;
 class RiskManager;
 class MarketState;
@@ -14,22 +12,21 @@ class EMSOrderTracker;
 
 class EMSPipeline {
 public:
-EMSPipeline(AuthService& auth,
-RiskManager& risk,
-MarketState& market,
-SymbolRouter& router,
-EMSOrderTracker& tracker);
+    EMSPipeline(AuthService& auth,
+                RiskManager& risk,
+                MarketState& market,
+                SymbolRouter& router,
+                EMSOrderTracker& tracker);
 
-::EMS::model::EMSDecision process(const ::EMS::model::OrderRequest& request);
+    model::EMSDecision process(const model::OrderRequest& request);
 
 private:
-AuthService& auth_;
-RiskManager& risk_;
-MarketState& market_;
-SymbolRouter& router_;
-EMSOrderTracker& tracker_;
+    // Core services injected via constructor
+    AuthService& auth_;
+    RiskManager& risk_;
+    MarketState& market_;
+    SymbolRouter& router_;
+    EMSOrderTracker& tracker_;
 };
 
 }
-
-#endif

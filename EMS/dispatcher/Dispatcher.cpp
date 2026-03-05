@@ -4,7 +4,9 @@
 #include <pthread.h>
 #include <immintrin.h>
 
-Dispatcher::Dispatcher(RingBuffer<EMS::model::OrderRequest, 1024>& queue,
+namespace EMS {
+
+Dispatcher::Dispatcher(RingBuffer<model::OrderRequest, 1024>& queue,
                        MatchingEngine& engine)
     : queue_(queue), engine_(engine) {}
 
@@ -26,7 +28,7 @@ void Dispatcher::join() {
 void Dispatcher::run() {
     pinThreadToCore(2);
 
-    EMS::model::OrderRequest req;
+    model::OrderRequest req;
 
     while (true) {
         while (queue_.pop(req)) {
@@ -39,6 +41,7 @@ void Dispatcher::run() {
             new_order->quantity = req.quantity;
             new_order->remaining = req.quantity; 
             new_order->timestamp = req.wall_time_ns;
+            
             engine_.onNewOrder(new_order);
         }
 
@@ -52,5 +55,7 @@ void Dispatcher::pinThreadToCore(int core_id) {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(core_id, &cpuset);
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    pthread_setaffinity_np(worker_.native_handle(), sizeof(cpu_set_t), &cpuset);
+}
+
 }

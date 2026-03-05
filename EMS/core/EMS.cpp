@@ -1,82 +1,61 @@
-#include "EMS.h"
+#include "core/EMS.h"
+#include "pipeline/EMSPipeline.h"
+#include "threading/IngressWorker.h"
+#include "dispatcher/Dispatcher.h" 
+#include "ports/EgressPort.h"
 #include "../../MatchingEngine/include/MatchingEngine.h"
+#include "queue/RingBuffer.h"
 
 namespace EMS {
 
-EMS::EMS(size_t symbol_count,
-         EMSPipeline& pipeline)
-    : symbol_count_(symbol_count),
-      pipeline_(pipeline)
+EMSCore::EMSCore(size_t symbol_count, 
+                 EMSPipeline& pipeline, 
+                 EgressPort& egress)
+    : symbol_count_(symbol_count), 
+      pipeline_(pipeline), 
+      egress_(egress) 
 {
     engines_.reserve(symbol_count_);
     dispatchers_.reserve(symbol_count_);
     queues_.reserve(symbol_count_);
+
     for (size_t i = 0; i < symbol_count_; ++i) {
-
-        auto queue = std::make_unique<
-            RingBuffer<model::OrderRequest, 1024>
-        >();
-
+        auto queue = std::make_unique<RingBuffer<model::OrderRequest, 1024>>();
         auto engine = std::make_unique<MatchingEngine>(i);
-
-        auto dispatcher = std::make_unique<Dispatcher>(
-            *queue,
-            *engine
-        );
+        auto dispatcher = std::make_unique<Dispatcher>(*queue, *engine);
 
         queues_.push_back(std::move(queue));
         engines_.push_back(std::move(engine));
         dispatchers_.push_back(std::move(dispatcher));
     }
+
     size_t ingress_count = std::thread::hardware_concurrency();
-    if (ingress_count == 0)
-        ingress_count = 4;
+    if (ingress_count == 0) ingress_count = 4;
 
     ingress_workers_.reserve(ingress_count);
 
     for (size_t i = 0; i < ingress_count; ++i) {
         ingress_workers_.push_back(
-            std::make_unique<IngressWorker>(
-                pipeline_,
-                queues_
-            )
+            std::make_unique<IngressWorker>(*this)
         );
     }
 }
 
-void EMS::start()
-{
-    for (auto& worker : ingress_workers_)
-        worker->start();
-
-    for (auto& dispatcher : dispatchers_)
-        dispatcher->start();
+void EMSCore::start() {
+    for (auto& worker : ingress_workers_) worker->start();
+    for (auto& dispatcher : dispatchers_) dispatcher->start();
 }
 
-void EMS::stop()
-{
-    for (auto& worker : ingress_workers_)
-        worker->stop();
-
-    for (auto& worker : ingress_workers_)
-        worker->join();
-    for (auto& dispatcher : dispatchers_)
-        dispatcher->stop();
-
-    for (auto& dispatcher : dispatchers_)
-        dispatcher->join();
+void EMSCore::stop() {
+    for (auto& worker : ingress_workers_) worker->stop();
+    for (auto& worker : ingress_workers_) worker->join();
+    for (auto& dispatcher : dispatchers_) dispatcher->stop();
+    for (auto& dispatcher : dispatchers_) dispatcher->join();
 }
 
-void EMS::submit(const model::OrderRequest& request)
-{
-    size_t index = next_worker_.fetch_add(
-        1,
-        std::memory_order_relaxed
-    );
-
-    index %= ingress_workers_.size();
-
-    ingress_workers_[index]->submit(request);
+void EMSCore::submit(const model::OrderRequest& request) {
+    model::EMSDecision decision = pipeline_.process(request);
+    egress_.forward(decision);
 }
 
-} // namespace EMS
+}

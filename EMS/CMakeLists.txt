@@ -8,6 +8,7 @@ add_library(ems STATIC
     market/MarketState.cpp
     routing/SymbolRouter.cpp
     tracker/EMSOrderTracker.cpp
+    ports/RingBufferEgress.cpp  # <-- JUST ADD THIS LINE
 )
 
 target_compile_features(ems PUBLIC cxx_std_17)

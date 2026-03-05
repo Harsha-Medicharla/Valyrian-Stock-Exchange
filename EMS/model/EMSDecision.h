@@ -1,23 +1,20 @@
 #pragma once
-
-#include "RejectReason.h"
-#include <cstddef>
+#include "OrderRequest.h" 
 
 namespace EMS {
 namespace model {
 
+enum class RejectReason {
+    NONE,
+    AUTH_FAILED,
+    MARKET_CLOSED,
+    RISK_EXCEEDED
+};
+
 struct EMSDecision {
     bool accepted;
     RejectReason reason;
-    size_t route_index;
-
-    static EMSDecision Accept(size_t route) {
-        return {true, RejectReason::NONE, route};
-    }
-
-    static EMSDecision Reject(RejectReason r) {
-        return {false, r, 0};
-    }
+    OrderRequest original_request; 
 };
 
 }

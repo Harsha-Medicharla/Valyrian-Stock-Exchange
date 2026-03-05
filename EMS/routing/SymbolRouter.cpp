@@ -2,8 +2,9 @@
 
 namespace EMS {
 
-void SymbolRouter::route(const model::OrderRequest& request) {
-    // Placeholder: In the future, this will send the AAPL order to the AAPL order book thread.
+uint16_t SymbolRouter::route(const model::OrderRequest& request) {
+    if (request.symbol == 1) return 1; 
+    return 0; 
 }
 
 }
