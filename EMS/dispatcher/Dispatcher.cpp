@@ -1,6 +1,5 @@
 #include "Dispatcher.h"
 #include "../../MatchingEngine/include/MatchingEngine.h"
-#include "../../MatchingEngine/include/Order.h" 
 #include <pthread.h>
 #include <immintrin.h>
 
@@ -32,17 +31,8 @@ void Dispatcher::run() {
 
     while (true) {
         while (queue_.pop(req)) {
-            Order* new_order = new Order();
-            new_order->order_id = req.order_id;
-            new_order->user_id = req.user_id;
-            new_order->side = req.side;
-            new_order->type = req.type;
-            new_order->price = req.price;
-            new_order->quantity = req.quantity;
-            new_order->remaining = req.quantity; 
-            new_order->timestamp = req.wall_time_ns;
-            
-            engine_.onNewOrder(new_order);
+            engine_.onNewOrder(req.order_id, req.user_id, req.side, req.type, 
+                               req.price, req.quantity, req.wall_time_ns);
         }
 
         if (!running_.load(std::memory_order_acquire))
@@ -58,4 +48,4 @@ void Dispatcher::pinThreadToCore(int core_id) {
     pthread_setaffinity_np(worker_.native_handle(), sizeof(cpu_set_t), &cpuset);
 }
 
-}
+} 

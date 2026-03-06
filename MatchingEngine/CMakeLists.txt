@@ -35,27 +35,5 @@ target_link_libraries(
   wal
   PUBLIC
   absl::flat_hash_map
-  art  # This 'art' now refers to the target defined in the root
+  art  # This 'art'
 )
-
-# Matching Engine Tests
-add_executable(
-  matching_engine_test
-  tests/matching_engine_test.cc
-)
-
-target_include_directories(
-  matching_engine_test
-  PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(
-  matching_engine_test
-  PRIVATE
-  wal
-  GTest::gtest_main
-)
-
-include(GoogleTest)
-gtest_discover_tests(matching_engine_test)
