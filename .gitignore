@@ -4,3 +4,4 @@ build_trade_test/
 **/.DS_Store
 *.wal
 *.trades
+matching_engine_test
