@@ -1,2 +1,2 @@
 #pragma once
-#include "../../../shared/types/CoreTypes.h"
+#include "shared/types/CoreTypes.h"

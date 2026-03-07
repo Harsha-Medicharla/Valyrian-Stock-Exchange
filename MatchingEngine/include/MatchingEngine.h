@@ -114,33 +114,51 @@ public:
     {
       return false;
     }
-    if (!isRecovering_)
-    {
-      try
-      {
-        wal.logInput(WalAction::ADD, order);
-      }
-      catch (const std::exception &e)
-      {
-        std::cerr << "[MatchingEngine] WAL Error in onNewOrder: " << e.what() << std::endl;
-        order_book_.requestDeAllocationOfOrder(order);
-        return false;
-      }
-    }
-
     try
     {
       match(order);
       updateOrderState(order);
 
+      if (order->type == OrderType::MARKET && order->remaining > 0)
+      {
+        order->state = OrderState::CANCELLED;
+        pushCancelAck(order->order_id, order->user_id, order->state, order->remaining);
+      }
+
       if (order->type == OrderType::MARKET || order->state == OrderState::FILLED ||
           order->state == OrderState::CANCELLED)
       {
+        if (!isRecovering_)
+        {
+          try
+          {
+            wal.logInput(WalAction::ADD, order);
+          }
+          catch (const std::exception &e)
+          {
+            std::cerr << "[MatchingEngine] WAL Error in onNewOrder: " << e.what() << std::endl;
+            order_book_.requestDeAllocationOfOrder(order);
+            return false;
+          }
+        }
         order_book_.requestDeAllocationOfOrder(order);
       }
       else
       {
         order_book_.insertOrder(order);
+        if (!isRecovering_)
+        {
+          try
+          {
+            wal.logInput(WalAction::ADD, order);
+          }
+          catch (const std::exception &e)
+          {
+            std::cerr << "[MatchingEngine] WAL Error in onNewOrder: " << e.what() << std::endl;
+            order_book_.removeOrder(order);
+            return false;
+          }
+        }
       }
 
       return true;
@@ -199,19 +217,6 @@ public:
 
   bool onModifyOrder(OrderId order_id, Price new_price, Qty new_qty)
   {
-    if (!isRecovering_)
-    {
-      try
-      {
-        wal.logModify(order_id, new_price, new_qty);
-      }
-      catch (const std::exception &e)
-      {
-        std::cerr << "[MatchingEngine] WAL Error in onModifyOrder: " << e.what() << std::endl;
-        return false;
-      }
-    }
-
     try
     {
       Order *order = order_book_.findOrder(order_id);
@@ -249,17 +254,11 @@ public:
         Side side = order->side;
         OrderType type = order->type;
 
-        onCancelOrder(order->order_id);
-        Order *new_order = order_book_.requestAllocationOfOrder();
-
-        *new_order = {order_id, user, side, type, new_price, new_qty, new_qty, getCurrentWallTime(),
-                      OrderState::NEW, nullptr, nullptr};
-        bool was_recovering = isRecovering_;
-        isRecovering_ = true;
-        bool success =
-            onNewOrder(new_order->order_id, new_order->user_id, new_order->side, new_order->type,
-                       new_order->price, new_order->quantity, new_order->timestamp);
-        isRecovering_ = was_recovering;
+        if (!onCancelOrder(order->order_id))
+        {
+          return false;
+        }
+        bool success = onNewOrder(order_id, user, side, type, new_price, new_qty, getCurrentWallTime());
         if (success)
         {
           Order *placed = order_book_.findOrder(order_id);
@@ -508,7 +507,7 @@ inline void MatchingEngine::match(Order *incoming_order) noexcept
       {
         try
         {
-          wal.logCancel(incoming_order->order_id);
+          wal.logCancel(resting_order->order_id);
         }
         catch (const std::exception &e)
         {
@@ -516,9 +515,19 @@ inline void MatchingEngine::match(Order *incoming_order) noexcept
                     << std::endl;
         }
       }
-      incoming_order->remaining = 0;
-      incoming_order->state = OrderState::CANCELLED;
-      break;
+      const OrderId resting_id = resting_order->order_id;
+      const UserId resting_uid = resting_order->user_id;
+      const Side resting_side = resting_order->side;
+      const OrderType resting_type = resting_order->type;
+      const Price resting_price = resting_order->price;
+      const Qty resting_qty = resting_order->quantity;
+      const Qty resting_remaining = resting_order->remaining;
+
+      order_book_.removeOrder(resting_order);
+      pushCancelAck(resting_id, resting_uid, OrderState::CANCELLED, resting_remaining);
+      pushDbCancel(resting_id, resting_uid, resting_side, resting_type, resting_price, resting_qty,
+                   resting_remaining);
+      continue;
     }
 
     Qty traded = std::min(incoming_order->remaining, resting_order->remaining);

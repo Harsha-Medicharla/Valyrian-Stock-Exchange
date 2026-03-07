@@ -10,14 +10,15 @@ include(FetchContent)
 FetchContent_Declare(
   rigtorp_spscqueue
   GIT_REPOSITORY https://github.com/rigtorp/SPSCQueue.git
-  GIT_TAG master
+  GIT_TAG 565a5149d54930463d58cb0f69b978d439555e66
+  GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(rigtorp_spscqueue)
 
 FetchContent_Declare(
   disruptorplus
   GIT_REPOSITORY https://github.com/lewissbaker/disruptorplus.git
-  GIT_TAG master
+  GIT_TAG 748e354476e0bf86dfdbb55f1d925222d7ee631b
 )
 FetchContent_MakeAvailable(disruptorplus)
 

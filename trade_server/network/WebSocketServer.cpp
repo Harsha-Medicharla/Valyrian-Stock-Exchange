@@ -2,11 +2,15 @@
 
 #include <App.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include <flatbuffers/flatbuffers.h>
 #include <hiredis.h>
@@ -62,38 +66,27 @@ struct WsUserData
     std::uint32_t conn_id{0};
 };
 
+using WsSocket = uWS::WebSocket<false, true, WsUserData>;
+
 WebSocketServer::WebSocketServer(EMSCore &ems, std::uint16_t port)
     : ems_(ems),
       connTable_(),
       port_(port),
       redis_host_(envOr("REDIS_HOST", "127.0.0.1")),
       redis_port_(std::atoi(envOr("REDIS_PORT", "6379"))),
-      redis_(nullptr),
       order_ids_(1),
       num_symbols_(ems.numSymbols()),
-      server_seq_by_symbol_(num_symbols_ > 0 ? std::make_unique<std::atomic<uint64_t>[]>(num_symbols_) : nullptr)
+      server_seq_by_symbol_(num_symbols_ > 0 ? std::make_unique<std::atomic<uint64_t>[]>(num_symbols_) : nullptr),
+      endpoints_(TradeServerConfig::MAX_CONNS)
 {
     if (server_seq_by_symbol_)
     {
         for (std::size_t i = 0; i < num_symbols_; ++i)
             server_seq_by_symbol_[i].store(1, std::memory_order_relaxed);
     }
-    redis_ = redisConnect(redis_host_.c_str(), redis_port_);
-    if (redis_ && redis_->err)
-    {
-        redisFree(redis_);
-        redis_ = nullptr;
-    }
 }
 
-WebSocketServer::~WebSocketServer()
-{
-    if (redis_)
-    {
-        redisFree(redis_);
-        redis_ = nullptr;
-    }
-}
+WebSocketServer::~WebSocketServer() = default;
 
 bool WebSocketServer::devSkipAuth() const noexcept
 {
@@ -101,7 +94,8 @@ bool WebSocketServer::devSkipAuth() const noexcept
     return v && v[0] && v[0] != '0';
 }
 
-bool WebSocketServer::resolveUserFromBearer(std::string_view authorization, std::uint64_t &out_user) const noexcept
+bool WebSocketServer::resolveUserFromBearer(redisContext *redis, std::string_view authorization,
+                                            std::uint64_t &out_user) const noexcept
 {
     out_user = 0;
     if (devSkipAuth())
@@ -110,7 +104,7 @@ bool WebSocketServer::resolveUserFromBearer(std::string_view authorization, std:
         return true;
     }
     const std::string_view tok = bearerToken(authorization);
-    if (tok.empty() || !redis_)
+    if (tok.empty() || !redis)
         return false;
 
     std::string key;
@@ -118,7 +112,7 @@ bool WebSocketServer::resolveUserFromBearer(std::string_view authorization, std:
     key.append("session:");
     key.append(tok.data(), tok.size());
 
-    redisReply *reply = static_cast<redisReply *>(redisCommand(redis_, "GET %s", key.c_str()));
+    redisReply *reply = static_cast<redisReply *>(redisCommand(redis, "GET %s", key.c_str()));
     if (!reply)
         return false;
     if (reply->type != REDIS_REPLY_STRING || reply->len <= 0)
@@ -265,69 +259,152 @@ void WebSocketServer::handleFlatBufferMessage(std::uint64_t user_id, std::uint32
     }
 }
 
+void WebSocketServer::registerEndpoint(std::uint32_t conn_id, uWS::Loop *loop, void *socket) noexcept
+{
+    if (conn_id == 0 || conn_id >= endpoints_.size())
+        return;
+    std::lock_guard lock(endpointsMutex_);
+    endpoints_[conn_id] = ConnectionEndpoint{
+        loop,
+        socket,
+        nextEndpointGeneration_.fetch_add(1, std::memory_order_relaxed)};
+}
+
+void WebSocketServer::unregisterEndpoint(std::uint32_t conn_id) noexcept
+{
+    if (conn_id == 0 || conn_id >= endpoints_.size())
+        return;
+    std::lock_guard lock(endpointsMutex_);
+    endpoints_[conn_id] = {};
+}
+
+bool WebSocketServer::sendToConnection(std::uint32_t conn_id, std::string payload) noexcept
+{
+    ConnectionEndpoint endpoint{};
+    {
+        std::lock_guard lock(endpointsMutex_);
+        if (conn_id == 0 || conn_id >= endpoints_.size())
+            return false;
+        endpoint = endpoints_[conn_id];
+    }
+
+    if (!endpoint.loop || !endpoint.socket)
+        return false;
+
+    endpoint.loop->defer([this, conn_id, endpoint, payload = std::move(payload)]() mutable {
+        WsSocket *socket = nullptr;
+        {
+            std::lock_guard lock(endpointsMutex_);
+            if (conn_id == 0 || conn_id >= endpoints_.size())
+                return;
+            const ConnectionEndpoint &current = endpoints_[conn_id];
+            if (current.loop != endpoint.loop || current.socket != endpoint.socket ||
+                current.generation != endpoint.generation)
+                return;
+            socket = static_cast<WsSocket *>(current.socket);
+        }
+        socket->send(payload, uWS::OpCode::BINARY);
+    });
+
+    return true;
+}
+
 void WebSocketServer::run()
 {
-    uWS::App app;
+    const std::size_t threadCount = std::max<std::size_t>(1, TradeServerConfig::IO_THREADS);
+    std::vector<std::thread> ioThreads;
+    ioThreads.reserve(threadCount);
 
-    app.ws<WsUserData>(
-        "/*",
-        {
-            .compression = uWS::DISABLED,
-            .maxPayloadLength = 64 * 1024,
-            .idleTimeout = 120,
-            .maxBackpressure = 1 * 1024 * 1024,
-            .upgrade =
-                [this](auto *res, auto *req, auto *context) {
-                    std::uint64_t uid = 0;
-                    const std::string_view auth = req->getHeader("authorization");
-                    if (!resolveUserFromBearer(auth, uid))
-                    {
-                        res->writeStatus("401 Unauthorized")->end();
-                        return;
-                    }
+    for (std::size_t i = 0; i < threadCount; ++i)
+    {
+        ioThreads.emplace_back([this]() {
+            redisContext *redis = redisConnect(redis_host_.c_str(), redis_port_);
+            if (redis && redis->err)
+            {
+                redisFree(redis);
+                redis = nullptr;
+            }
 
-                    const std::uint32_t cid = connTable_.assign(uid);
-                    if (cid == 0)
-                    {
-                        res->writeStatus("503 Service Unavailable")->end();
-                        return;
-                    }
+            uWS::App app;
+            app.ws<WsUserData>(
+                   "/*",
+                   {
+                       .compression = uWS::DISABLED,
+                       .maxPayloadLength = 64 * 1024,
+                       .idleTimeout = 120,
+                       .maxBackpressure = 1 * 1024 * 1024,
+                       .upgrade =
+                           [this, redis](auto *res, auto *req, auto *context) {
+                               std::uint64_t uid = 0;
+                               const std::string_view auth = req->getHeader("authorization");
+                               if (!resolveUserFromBearer(redis, auth, uid))
+                               {
+                                   res->writeStatus("401 Unauthorized")->end();
+                                   return;
+                               }
 
-                    res->template upgrade<WsUserData>(
-                        {.user_id = uid, .conn_id = cid},
-                        req->getHeader("sec-websocket-key"),
-                        req->getHeader("sec-websocket-protocol"),
-                        req->getHeader("sec-websocket-extensions"),
-                        context);
-                },
-            .open = [](auto * /*ws*/) {},
-            .message =
-                [this](auto *ws, std::string_view message, uWS::OpCode op) {
-                    if (op != uWS::OpCode::BINARY && op != uWS::OpCode::TEXT)
-                        return;
-                    WsUserData *ud = static_cast<WsUserData *>(ws->getUserData());
-                    if (!ud || ud->user_id == 0 || ud->conn_id == 0)
-                        return;
-                    handleFlatBufferMessage(ud->user_id, ud->conn_id, message);
-                },
-            .drain = [](auto * /*ws*/) {},
-            .ping = [](auto * /*ws*/, std::string_view) {},
-            .pong = [](auto * /*ws*/, std::string_view) {},
-            .close =
-                [this](auto *ws, int /*code*/, std::string_view /*msg*/) {
-                    WsUserData *ud = static_cast<WsUserData *>(ws->getUserData());
-                    if (ud && ud->conn_id != 0)
-                        connTable_.release(ud->conn_id);
-                },
-        })
-        .listen(
-            static_cast<int>(port_),
-            [port = port_](us_listen_socket_t *token) {
-                if (!token)
-                {
-                    std::fprintf(stderr, "vse_trade_server: listen failed on port %u\n", static_cast<unsigned>(port));
-                    std::fflush(stderr);
-                }
-            })
-        .run();
+                               const std::uint32_t cid = connTable_.assign(uid);
+                               if (cid == 0)
+                               {
+                                   res->writeStatus("503 Service Unavailable")->end();
+                                   return;
+                               }
+
+                               res->template upgrade<WsUserData>(
+                                   {.user_id = uid, .conn_id = cid},
+                                   req->getHeader("sec-websocket-key"),
+                                   req->getHeader("sec-websocket-protocol"),
+                                   req->getHeader("sec-websocket-extensions"),
+                                   context);
+                           },
+                       .open =
+                           [this](auto *ws) {
+                               WsUserData *ud = static_cast<WsUserData *>(ws->getUserData());
+                               if (!ud || ud->conn_id == 0)
+                                   return;
+                               registerEndpoint(ud->conn_id, uWS::Loop::get(), ws);
+                           },
+                       .message =
+                           [this](auto *ws, std::string_view message, uWS::OpCode op) {
+                               if (op != uWS::OpCode::BINARY && op != uWS::OpCode::TEXT)
+                                   return;
+                               WsUserData *ud = static_cast<WsUserData *>(ws->getUserData());
+                               if (!ud || ud->user_id == 0 || ud->conn_id == 0)
+                                   return;
+                               handleFlatBufferMessage(ud->user_id, ud->conn_id, message);
+                           },
+                       .drain = [](auto * /*ws*/) {},
+                       .ping = [](auto * /*ws*/, std::string_view) {},
+                       .pong = [](auto * /*ws*/, std::string_view) {},
+                       .close =
+                           [this](auto *ws, int /*code*/, std::string_view /*msg*/) {
+                               WsUserData *ud = static_cast<WsUserData *>(ws->getUserData());
+                               if (ud && ud->conn_id != 0)
+                               {
+                                   unregisterEndpoint(ud->conn_id);
+                                   connTable_.release(ud->conn_id);
+                               }
+                           },
+                   })
+                .listen(
+                    "0.0.0.0",
+                    static_cast<int>(port_),
+                    LIBUS_LISTEN_REUSE_PORT,
+                    [port = port_](us_listen_socket_t *token) {
+                        if (!token)
+                        {
+                            std::fprintf(stderr, "vse_trade_server: listen failed on port %u\n",
+                                         static_cast<unsigned>(port));
+                            std::fflush(stderr);
+                        }
+                    })
+                .run();
+
+            if (redis)
+                redisFree(redis);
+        });
+    }
+
+    for (auto &thread : ioThreads)
+        thread.join();
 }

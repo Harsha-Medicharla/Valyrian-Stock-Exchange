@@ -10,14 +10,15 @@ include(FetchContent)
 FetchContent_Declare(
   rigtorp_spscqueue
   GIT_REPOSITORY https://github.com/rigtorp/SPSCQueue.git
-  GIT_TAG master
+  GIT_TAG 565a5149d54930463d58cb0f69b978d439555e66
+  GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(rigtorp_spscqueue)
 
 FetchContent_Declare(
   disruptorplus
   GIT_REPOSITORY https://github.com/lewissbaker/disruptorplus.git
-  GIT_TAG master
+  GIT_TAG 748e354476e0bf86dfdbb55f1d925222d7ee631b
 )
 FetchContent_MakeAvailable(disruptorplus)
 
@@ -39,6 +40,7 @@ FetchContent_Declare(
   hiredis_fc
   GIT_REPOSITORY https://github.com/redis/hiredis.git
   GIT_TAG v1.2.0
+  GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(hiredis_fc)
 FetchContent_GetProperties(hiredis_fc SOURCE_DIR hiredis_fc_SOURCE_DIR)
@@ -47,6 +49,7 @@ FetchContent_Declare(
   vse_flatbuffers_headers
   GIT_REPOSITORY https://github.com/google/flatbuffers.git
   GIT_TAG v24.3.25
+  GIT_SHALLOW TRUE
 )
 FetchContent_GetProperties(vse_flatbuffers_headers)
 if(NOT vse_flatbuffers_headers_POPULATED)
@@ -63,6 +66,8 @@ target_include_directories(trade_server_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/network
   ${CMAKE_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/ems
+  ${CMAKE_SOURCE_DIR}/db
+  ${CMAKE_SOURCE_DIR}/market_data
   ${rigtorp_spscqueue_SOURCE_DIR}/include
   ${disruptorplus_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/MatchingEngine/include
@@ -75,6 +80,8 @@ target_link_libraries(trade_server_app PRIVATE
   Threads::Threads
   wal
   vse_shared
+  vse_db_lib
+  vse_market_data_lib
   uwebsockets_vse
   hiredis::hiredis
 )

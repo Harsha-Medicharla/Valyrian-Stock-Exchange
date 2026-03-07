@@ -4,7 +4,8 @@
 
 #include "shared/types/Events.h"
 
-struct PGconn;
+struct pg_conn;
+using PGconn = struct pg_conn;
 
 class PGWriter
 {

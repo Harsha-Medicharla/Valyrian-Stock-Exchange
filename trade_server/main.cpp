@@ -4,6 +4,8 @@
 
 #include "config/TradeServerConfig.h"
 #include "core/EMSCore.h"
+#include "db/DBWriter.h"
+#include "market_data/MarketDataPublisher.h"
 #include "network/WebSocketServer.h"
 #include "resp/RespThread.h"
 
@@ -18,10 +20,17 @@ int main()
     std::signal(SIGTERM, onSignal);
 
     EMSCore ems(TradeServerConfig::IO_THREADS, /*numSymbols=*/16);
+    const char *pgConnString = std::getenv("VSE_PG_CONN");
+    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), static_cast<uint32_t>(ems.numSymbols()),
+                      ems.balanceCache(), pgConnString ? pgConnString : "");
+    MarketDataPublisher marketData(ems.tradeQueues(), static_cast<uint32_t>(ems.numSymbols()),
+                                   TradeServerConfig::WS_PORT);
     WebSocketServer ws(ems, TradeServerConfig::WS_PORT);
     RespThread resp(ems, ws);
 
     ems.start();
+    dbWriter.start();
+    marketData.start();
     resp.start();
 
     std::fprintf(stderr, "vse_trade_server: WebSocket listening on port %u (Ctrl+C to exit)\n",
@@ -34,6 +43,10 @@ int main()
 
     resp.stop();
     resp.join();
+    marketData.stop();
+    marketData.join();
+    dbWriter.stop();
+    dbWriter.join();
     ems.stop();
     ems.join();
     return 0;

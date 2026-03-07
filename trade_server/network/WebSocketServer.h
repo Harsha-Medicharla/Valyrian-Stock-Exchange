@@ -2,8 +2,11 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <memory>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include "core/EMSCore.h"
 #include "types/RawOrder.h"
@@ -12,6 +15,10 @@
 #include "resp/IdGenerators.h"
 
 struct redisContext;
+namespace uWS
+{
+class Loop;
+}
 
 class WebSocketServer
 {
@@ -21,16 +28,27 @@ private:
     std::uint16_t port_;
     std::string redis_host_;
     int redis_port_;
-    redisContext *redis_{nullptr};
     IdGenerator order_ids_;
     std::size_t num_symbols_{0};
     std::unique_ptr<std::atomic<uint64_t>[]> server_seq_by_symbol_;
+    struct ConnectionEndpoint
+    {
+        uWS::Loop *loop{nullptr};
+        void *socket{nullptr};
+        std::uint64_t generation{0};
+    };
+    std::vector<ConnectionEndpoint> endpoints_;
+    std::mutex endpointsMutex_;
+    std::atomic<std::uint64_t> nextEndpointGeneration_{1};
 
     [[nodiscard]] bool devSkipAuth() const noexcept;
-    [[nodiscard]] bool resolveUserFromBearer(std::string_view authorization, std::uint64_t &out_user) const noexcept;
+    [[nodiscard]] bool resolveUserFromBearer(redisContext *redis, std::string_view authorization,
+                                             std::uint64_t &out_user) const noexcept;
     [[nodiscard]] bool nextServerSequence(std::uint32_t symbol_id, std::uint64_t &out_seq) noexcept;
     [[nodiscard]] std::uint64_t wallTimestampNs() const noexcept;
     void handleFlatBufferMessage(std::uint64_t user_id, std::uint32_t conn_id, std::string_view message) noexcept;
+    void registerEndpoint(std::uint32_t conn_id, uWS::Loop *loop, void *socket) noexcept;
+    void unregisterEndpoint(std::uint32_t conn_id) noexcept;
 
 public:
     explicit WebSocketServer(EMSCore &ems, std::uint16_t port);
@@ -48,6 +66,8 @@ public:
     }
 
     [[nodiscard]] ConnTable &connTable() noexcept { return connTable_; }
+
+    [[nodiscard]] bool sendToConnection(std::uint32_t conn_id, std::string payload) noexcept;
 
     void run();
 };

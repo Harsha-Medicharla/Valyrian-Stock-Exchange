@@ -2,6 +2,9 @@
 #include <atomic>
 #include <array>
 #include <cstdint>
+#include <mutex>
+#include <shared_mutex>
+#include <unordered_map>
 
 struct alignas(64) ConnState
 {
@@ -21,6 +24,8 @@ private:
 
     alignas(64) std::array<ConnState, kMax> slots_{};
     std::atomic<std::uint32_t> nextId_{1};
+    mutable std::shared_mutex activeByUserMutex_;
+    std::unordered_map<std::uint64_t, std::uint32_t> activeByUser_;
 
 public:
     ConnTable() noexcept
@@ -42,6 +47,10 @@ public:
         s.user_id = userId;
         s.last_client_seq = 0;
         s.is_active = true;
+        {
+            std::unique_lock lock(activeByUserMutex_);
+            activeByUser_[userId] = id;
+        }
         return id;
     }
 
@@ -49,8 +58,20 @@ public:
     {
         if (connId == 0 || connId >= kMax)
             return;
-        slots_[connId].is_active = false;
+        ConnState &state = slots_[connId];
+        state.is_active = false;
+        std::unique_lock lock(activeByUserMutex_);
+        const auto it = activeByUser_.find(state.user_id);
+        if (it != activeByUser_.end() && it->second == connId)
+            activeByUser_.erase(it);
     }
 
     [[nodiscard]] ConnState &get(std::uint32_t connId) noexcept { return slots_[connId]; }
+
+    [[nodiscard]] std::uint32_t findByUser(std::uint64_t userId) const noexcept
+    {
+        std::shared_lock lock(activeByUserMutex_);
+        const auto it = activeByUser_.find(userId);
+        return it == activeByUser_.end() ? 0U : it->second;
+    }
 };
