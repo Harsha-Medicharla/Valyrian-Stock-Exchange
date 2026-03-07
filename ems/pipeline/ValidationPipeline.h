@@ -4,6 +4,7 @@
 #include "../types/Common.h"
 #include "RateLimiter.h"
 #include "MarketState.h"
+#include "BalanceCache.h"
 
 class ValidationPipeline
 {
@@ -14,19 +15,22 @@ private:
     bool checkRateLimit(const RawOrder *o) noexcept;
     bool checkTickSize(const RawOrder *o) const noexcept;
     bool checkLotSize(const RawOrder *o) const noexcept;
+    bool checkBalance(const RawOrder *o) noexcept;
 
     RateLimiter &rateLimiter_;
     MarketState &marketState_;
+    BalanceCache &balanceCache_;
 
 public:
-    ValidationPipeline(RateLimiter &rl, MarketState &ms);
+    ValidationPipeline(RateLimiter &rl, MarketState &ms, BalanceCache &bc);
 
     Decision process(const RawOrder *order, RejectReason &reason);
 };
 
-inline ValidationPipeline::ValidationPipeline(RateLimiter &rl, MarketState &ms)
+inline ValidationPipeline::ValidationPipeline(RateLimiter &rl, MarketState &ms, BalanceCache &bc)
     : rateLimiter_(rl),
-      marketState_(ms)
+      marketState_(ms),
+      balanceCache_(bc)
 {
 }
 
@@ -71,6 +75,12 @@ inline Decision ValidationPipeline::process(const RawOrder *o, RejectReason &r)
     if (!checkLotSize(o))
     {
         r = RejectReason::INVALID_LOT;
+        return Decision::REJECT;
+    }
+
+    if (!checkBalance(o))
+    {
+        r = RejectReason::INSUFFICIENT_FUNDS;
         return Decision::REJECT;
     }
 
@@ -119,4 +129,21 @@ inline bool ValidationPipeline::checkTickSize(const RawOrder *o) const noexcept
 inline bool ValidationPipeline::checkLotSize(const RawOrder *o) const noexcept
 {
     return (o->qty % EMSConfig::LOT_SIZE) == 0;
+}
+
+inline bool ValidationPipeline::checkBalance(const RawOrder *o) noexcept
+{
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
+
+    if (o->side == 0)
+    {
+        const int64_t amount = o->price * static_cast<int64_t>(o->qty);
+        return balanceCache_.tryBlockFunds(o->user_id, amount);
+    }
+    if (o->side == 1)
+    {
+        return balanceCache_.tryBlockHoldings(o->user_id, o->symbol_id, static_cast<int32_t>(o->qty));
+    }
+    return false;
 }

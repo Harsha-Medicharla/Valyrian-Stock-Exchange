@@ -1,17 +1,6 @@
 #pragma once
 #include <cstdint>
-
-enum class Side : uint8_t
-{
-    BUY,
-    SELL
-};
-
-enum class OrderType : uint8_t
-{
-    LIMIT,
-    MARKET
-};
+#include "../../shared/types/CoreTypes.h"
 
 enum class Decision : uint8_t
 {
@@ -26,5 +15,6 @@ enum class RejectReason : uint8_t
     MARKET_CLOSED,
     RATE_LIMIT,
     INVALID_TICK,
-    INVALID_LOT
+    INVALID_LOT,
+    INSUFFICIENT_FUNDS   // balance check failed
 };

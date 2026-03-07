@@ -1,0 +1,45 @@
+namespace VSE;
+
+enum Side : byte { BUY = 0, SELL = 1 }
+enum OrderType : byte { LIMIT = 0, MARKET = 1 }
+
+table NewOrder {
+  client_seq: uint64;
+  symbol_id:  uint32;
+  side:       Side;
+  order_type: OrderType;
+  price:      int64;
+  qty:        uint32;
+}
+
+table CancelOrder {
+  client_seq: uint64;
+  symbol_id:  uint32;
+  order_id:   uint64;
+}
+
+table ModifyOrder {
+  client_seq: uint64;
+  symbol_id:  uint32;
+  order_id:   uint64;
+  new_price:  int64;
+  new_qty:    uint32;
+}
+
+union RequestBody { NewOrder, CancelOrder, ModifyOrder }
+
+table Request {
+  body: RequestBody;
+}
+
+table ExecutionReport {
+  order_id:     uint64;
+  client_seq:   uint64;
+  fill_price:   int64;
+  fill_qty:     int64;
+  remaining:    int64;
+  event_type:   byte;
+  reject_reason: byte;
+}
+
+root_type Request;

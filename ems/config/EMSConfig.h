@@ -6,7 +6,7 @@
 namespace EMSConfig
 {
     // Fixed capacity for lock-free per-user counters in RateLimiter.
-    inline constexpr std::size_t MAX_USERS = 1u << 20;
+    inline constexpr std::size_t MAX_USERS = 1u << 17;
 
     // Notional (price × quantity) must not exceed this limit (fat-finger protection).
     inline constexpr int64_t FAT_FINGER_LIMIT = 1'000'000'000'000LL;

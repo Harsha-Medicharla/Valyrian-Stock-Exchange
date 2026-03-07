@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <cstdint>
+#include "../config/EMSConfig.h"
 
 // Lock-free rejection signal channel — replaces SequenceStateBuffer.
 // Uses a 256-bit sliding window of atomic bits, one bit per server sequence.

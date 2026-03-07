@@ -1,0 +1,333 @@
+#include "WebSocketServer.h"
+
+#include <App.h>
+
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string_view>
+
+#include <flatbuffers/flatbuffers.h>
+#include <hiredis.h>
+
+#include "WireTypes_generated.h"
+#include "types/RawOrder.h"
+
+namespace
+{
+    [[nodiscard]] std::string_view trim(std::string_view s) noexcept
+    {
+        while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+            s.remove_prefix(1);
+        while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+            s.remove_suffix(1);
+        return s;
+    }
+
+    [[nodiscard]] bool starts_with_ci(std::string_view hay, std::string_view needle) noexcept
+    {
+        if (hay.size() < needle.size())
+            return false;
+        for (std::size_t i = 0; i < needle.size(); ++i)
+        {
+            const char a = static_cast<char>(hay[i]);
+            const char b = static_cast<char>(needle[i]);
+            const char ca = (a >= 'A' && a <= 'Z') ? static_cast<char>(a - 'A' + 'a') : a;
+            const char cb = (b >= 'A' && b <= 'Z') ? static_cast<char>(b - 'A' + 'a') : b;
+            if (ca != cb)
+                return false;
+        }
+        return true;
+    }
+
+    [[nodiscard]] std::string_view bearerToken(std::string_view authorization) noexcept
+    {
+        const std::string_view prefix = "bearer ";
+        if (!starts_with_ci(authorization, prefix))
+            return {};
+        return trim(authorization.substr(prefix.size()));
+    }
+
+    [[nodiscard]] const char *envOr(const char *key, const char *fallback) noexcept
+    {
+        const char *v = std::getenv(key);
+        return (v && v[0]) ? v : fallback;
+    }
+} // namespace
+
+struct WsUserData
+{
+    std::uint64_t user_id{0};
+    std::uint32_t conn_id{0};
+};
+
+WebSocketServer::WebSocketServer(EMSCore &ems, std::uint16_t port)
+    : ems_(ems),
+      connTable_(),
+      port_(port),
+      redis_host_(envOr("REDIS_HOST", "127.0.0.1")),
+      redis_port_(std::atoi(envOr("REDIS_PORT", "6379"))),
+      redis_(nullptr),
+      order_ids_(1),
+      num_symbols_(ems.numSymbols()),
+      server_seq_by_symbol_(num_symbols_ > 0 ? std::make_unique<std::atomic<uint64_t>[]>(num_symbols_) : nullptr)
+{
+    if (server_seq_by_symbol_)
+    {
+        for (std::size_t i = 0; i < num_symbols_; ++i)
+            server_seq_by_symbol_[i].store(1, std::memory_order_relaxed);
+    }
+    redis_ = redisConnect(redis_host_.c_str(), redis_port_);
+    if (redis_ && redis_->err)
+    {
+        redisFree(redis_);
+        redis_ = nullptr;
+    }
+}
+
+WebSocketServer::~WebSocketServer()
+{
+    if (redis_)
+    {
+        redisFree(redis_);
+        redis_ = nullptr;
+    }
+}
+
+bool WebSocketServer::devSkipAuth() const noexcept
+{
+    const char *v = std::getenv("VSE_DEV_SKIP_AUTH");
+    return v && v[0] && v[0] != '0';
+}
+
+bool WebSocketServer::resolveUserFromBearer(std::string_view authorization, std::uint64_t &out_user) const noexcept
+{
+    out_user = 0;
+    if (devSkipAuth())
+    {
+        out_user = 1;
+        return true;
+    }
+    const std::string_view tok = bearerToken(authorization);
+    if (tok.empty() || !redis_)
+        return false;
+
+    std::string key;
+    key.reserve(8 + tok.size());
+    key.append("session:");
+    key.append(tok.data(), tok.size());
+
+    redisReply *reply = static_cast<redisReply *>(redisCommand(redis_, "GET %s", key.c_str()));
+    if (!reply)
+        return false;
+    if (reply->type != REDIS_REPLY_STRING || reply->len <= 0)
+    {
+        freeReplyObject(reply);
+        return false;
+    }
+    char *end = nullptr;
+    const unsigned long long v = std::strtoull(reply->str, &end, 10);
+    freeReplyObject(reply);
+    if (end == reply->str || v == 0ULL)
+        return false;
+    out_user = static_cast<std::uint64_t>(v);
+    return true;
+}
+
+bool WebSocketServer::nextServerSequence(std::uint32_t symbol_id, std::uint64_t &out_seq) noexcept
+{
+    if (!server_seq_by_symbol_ || symbol_id >= num_symbols_)
+        return false;
+    out_seq = server_seq_by_symbol_[symbol_id].fetch_add(1, std::memory_order_acq_rel);
+    return true;
+}
+
+std::uint64_t WebSocketServer::wallTimestampNs() const noexcept
+{
+    using clock = std::chrono::system_clock;
+    return static_cast<std::uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now().time_since_epoch()).count());
+}
+
+void WebSocketServer::handleFlatBufferMessage(std::uint64_t user_id, std::uint32_t conn_id, std::string_view message) noexcept
+{
+    if (message.size() > 64 * 1024)
+        return;
+
+    flatbuffers::Verifier verifier(reinterpret_cast<const std::uint8_t *>(message.data()), message.size());
+    if (!VSE::VerifyRequestBuffer(verifier))
+        return;
+
+    const VSE::Request *req = VSE::GetRequest(message.data());
+    if (!req)
+        return;
+
+    ConnState &cs = connTable_.get(conn_id);
+
+    const std::size_t workers = ems_.numWorkers();
+    if (workers == 0)
+        return;
+    const std::size_t worker_hint = static_cast<std::size_t>(user_id) % workers;
+
+    RawOrder ro{};
+    ro.user_id = static_cast<std::uint32_t>(user_id);
+    ro.timestamp = wallTimestampNs();
+
+    switch (req->body_type())
+    {
+    case VSE::RequestBody_NewOrder: {
+        const VSE::NewOrder *n = req->body_as_NewOrder();
+        if (!n)
+            return;
+        if (n->symbol_id() >= num_symbols_)
+            return;
+        const std::uint64_t cseq = n->client_seq();
+        if (cseq != 0 && cseq <= cs.last_client_seq)
+            return;
+        if (cseq != 0)
+            cs.last_client_seq = cseq;
+
+        uint64_t seq = 0;
+        if (!nextServerSequence(n->symbol_id(), seq))
+            return;
+
+        ro.sequence = seq;
+        ro.order_id = order_ids_.nextId();
+        ro.symbol_id = n->symbol_id();
+        ro.price = n->price();
+        ro.qty = n->qty();
+        ro.side = static_cast<std::uint8_t>(n->side());
+        ro.type = static_cast<std::uint8_t>(n->order_type());
+        ro.cancel_flag = 0;
+        ro.modify_flag = 0;
+        (void)pushRawOrder(ro, worker_hint);
+        break;
+    }
+    case VSE::RequestBody_CancelOrder: {
+        const VSE::CancelOrder *c = req->body_as_CancelOrder();
+        if (!c)
+            return;
+        if (c->symbol_id() >= num_symbols_)
+            return;
+        const std::uint64_t cseq = c->client_seq();
+        if (cseq != 0 && cseq <= cs.last_client_seq)
+            return;
+        if (cseq != 0)
+            cs.last_client_seq = cseq;
+
+        uint64_t seq = 0;
+        if (!nextServerSequence(c->symbol_id(), seq))
+            return;
+
+        ro.sequence = seq;
+        ro.order_id = c->order_id();
+        ro.symbol_id = c->symbol_id();
+        ro.price = 0;
+        ro.qty = 0;
+        ro.side = 0;
+        ro.type = 0;
+        ro.cancel_flag = 1;
+        ro.modify_flag = 0;
+        (void)pushRawOrder(ro, worker_hint);
+        break;
+    }
+    case VSE::RequestBody_ModifyOrder: {
+        const VSE::ModifyOrder *m = req->body_as_ModifyOrder();
+        if (!m)
+            return;
+        if (m->symbol_id() >= num_symbols_)
+            return;
+        const std::uint64_t cseq = m->client_seq();
+        if (cseq != 0 && cseq <= cs.last_client_seq)
+            return;
+        if (cseq != 0)
+            cs.last_client_seq = cseq;
+
+        uint64_t seq = 0;
+        if (!nextServerSequence(m->symbol_id(), seq))
+            return;
+
+        ro.sequence = seq;
+        ro.order_id = m->order_id();
+        ro.symbol_id = m->symbol_id();
+        ro.price = m->new_price();
+        ro.qty = m->new_qty();
+        ro.side = 0;
+        ro.type = 0;
+        ro.cancel_flag = 0;
+        ro.modify_flag = 1;
+        (void)pushRawOrder(ro, worker_hint);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+void WebSocketServer::run()
+{
+    uWS::App app;
+
+    app.ws<WsUserData>(
+        "/*",
+        {
+            .compression = uWS::DISABLED,
+            .maxPayloadLength = 64 * 1024,
+            .idleTimeout = 120,
+            .maxBackpressure = 1 * 1024 * 1024,
+            .upgrade =
+                [this](auto *res, auto *req, auto *context) {
+                    std::uint64_t uid = 0;
+                    const std::string_view auth = req->getHeader("authorization");
+                    if (!resolveUserFromBearer(auth, uid))
+                    {
+                        res->writeStatus("401 Unauthorized")->end();
+                        return;
+                    }
+
+                    const std::uint32_t cid = connTable_.assign(uid);
+                    if (cid == 0)
+                    {
+                        res->writeStatus("503 Service Unavailable")->end();
+                        return;
+                    }
+
+                    res->template upgrade<WsUserData>(
+                        {.user_id = uid, .conn_id = cid},
+                        req->getHeader("sec-websocket-key"),
+                        req->getHeader("sec-websocket-protocol"),
+                        req->getHeader("sec-websocket-extensions"),
+                        context);
+                },
+            .open = [](auto * /*ws*/) {},
+            .message =
+                [this](auto *ws, std::string_view message, uWS::OpCode op) {
+                    if (op != uWS::OpCode::BINARY && op != uWS::OpCode::TEXT)
+                        return;
+                    WsUserData *ud = static_cast<WsUserData *>(ws->getUserData());
+                    if (!ud || ud->user_id == 0 || ud->conn_id == 0)
+                        return;
+                    handleFlatBufferMessage(ud->user_id, ud->conn_id, message);
+                },
+            .drain = [](auto * /*ws*/) {},
+            .ping = [](auto * /*ws*/, std::string_view) {},
+            .pong = [](auto * /*ws*/, std::string_view) {},
+            .close =
+                [this](auto *ws, int /*code*/, std::string_view /*msg*/) {
+                    WsUserData *ud = static_cast<WsUserData *>(ws->getUserData());
+                    if (ud && ud->conn_id != 0)
+                        connTable_.release(ud->conn_id);
+                },
+        })
+        .listen(
+            static_cast<int>(port_),
+            [port = port_](us_listen_socket_t *token) {
+                if (!token)
+                {
+                    std::fprintf(stderr, "vse_trade_server: listen failed on port %u\n", static_cast<unsigned>(port));
+                    std::fflush(stderr);
+                }
+            })
+        .run();
+}

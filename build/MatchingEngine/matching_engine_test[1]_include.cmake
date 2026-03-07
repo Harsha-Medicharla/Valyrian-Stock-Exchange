@@ -1,0 +1,5 @@
+if(EXISTS "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/MatchingEngine/matching_engine_test[1]_tests.cmake")
+  include("/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/MatchingEngine/matching_engine_test[1]_tests.cmake")
+else()
+  add_test(matching_engine_test_NOT_BUILT matching_engine_test_NOT_BUILT)
+endif()

@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/CMakeFiles/vse_flatbuffers_headers-populate"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/CMakeFiles/vse_flatbuffers_headers-populate.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/CMakeFiles/vse_flatbuffers_headers-populate-complete.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-build.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-configure.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-download.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-install.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-mkdir.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-patch.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-test.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/vse_flatbuffers_headers-subbuild/vse_flatbuffers_headers-populate-prefix/src/vse_flatbuffers_headers-populate-stamp/vse_flatbuffers_headers-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"vse_flatbuffers_headers-populate"
+		],
+		"name" : "vse_flatbuffers_headers-populate"
+	}
+}

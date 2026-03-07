@@ -23,4 +23,8 @@ struct alignas(64) OrderSlot
 
     uint8_t side;
     uint8_t type;
+    uint8_t cancel_flag;
+    uint8_t modify_flag;
 };
+
+static_assert(sizeof(OrderSlot) == 64, "OrderSlot must remain 64 bytes");

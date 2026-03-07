@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -o libabsl_log_severity.dylib -install_name @rpath/libabsl_log_severity.dylib CMakeFiles/absl_log_severity.dir/log_severity.cc.o

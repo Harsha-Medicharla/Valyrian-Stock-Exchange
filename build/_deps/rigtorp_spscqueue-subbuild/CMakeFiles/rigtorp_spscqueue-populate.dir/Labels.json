@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/CMakeFiles/rigtorp_spscqueue-populate"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/CMakeFiles/rigtorp_spscqueue-populate.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/CMakeFiles/rigtorp_spscqueue-populate-complete.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-build.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-configure.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-download.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-install.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-mkdir.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-patch.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-test.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/rigtorp_spscqueue-subbuild/rigtorp_spscqueue-populate-prefix/src/rigtorp_spscqueue-populate-stamp/rigtorp_spscqueue-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"rigtorp_spscqueue-populate"
+		],
+		"name" : "rigtorp_spscqueue-populate"
+	}
+}
