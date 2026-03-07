@@ -1,2 +1,6 @@
 build/
 build_trade_test/
+.DS_Store
+**/.DS_Store
+*.wal
+*.trades
