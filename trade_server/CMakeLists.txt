@@ -4,6 +4,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads REQUIRED)
+if(APPLE)
+    list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libpq")
+endif()
+find_package(PostgreSQL REQUIRED)
 
 include(FetchContent)
 
@@ -37,15 +41,6 @@ endif()
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/UsocketsUWebSockets.cmake)
 
 FetchContent_Declare(
-  hiredis_fc
-  GIT_REPOSITORY https://github.com/redis/hiredis.git
-  GIT_TAG v1.2.0
-  GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(hiredis_fc)
-FetchContent_GetProperties(hiredis_fc SOURCE_DIR hiredis_fc_SOURCE_DIR)
-
-FetchContent_Declare(
   vse_flatbuffers_headers
   GIT_REPOSITORY https://github.com/google/flatbuffers.git
   GIT_TAG v24.3.25
@@ -73,17 +68,17 @@ target_include_directories(trade_server_app PRIVATE
   ${CMAKE_SOURCE_DIR}/MatchingEngine/include
   ${CMAKE_CURRENT_SOURCE_DIR}/protocol
   "${vse_flatbuffers_headers_SOURCE_DIR}/include"
-  "${hiredis_fc_SOURCE_DIR}"
 )
 
 target_link_libraries(trade_server_app PRIVATE
   Threads::Threads
+  PostgreSQL::PostgreSQL
   wal
   vse_shared
   vse_db_lib
   vse_market_data_lib
   uwebsockets_vse
-  hiredis::hiredis
+  hiredis
 )
 
 target_compile_definitions(trade_server_app PRIVATE VSE_HAVE_HIREDIS=1)

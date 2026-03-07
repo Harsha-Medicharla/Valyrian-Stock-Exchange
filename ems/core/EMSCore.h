@@ -15,6 +15,7 @@
 #include "../pipeline/MarketState.h"
 #include "../pipeline/RateLimiter.h"
 #include "../pipeline/BalanceCache.h"
+#include "../../db/SymbolCache.h"
 #include "../../MatchingEngine/include/MatchingEngine.h"
 
 class EMSCore
@@ -42,9 +43,10 @@ private:
     } eventBus_;
 
     std::vector<EventSPSC<OrderEvent>> rejectOrderQueues_;
+    const SymbolCache &symbolCache_;
 
 public:
-    EMSCore(size_t numWorkers, size_t numSymbols)
+    EMSCore(size_t numWorkers, size_t numSymbols, const SymbolCache &symbolCache)
         : numWorkers_(numWorkers),
           numSymbols_(numSymbols),
           spscQueues_(),
@@ -58,7 +60,8 @@ public:
           router_(numSymbols),
           marketState_(numSymbols),
           eventBus_(),
-          rejectOrderQueues_()
+          rejectOrderQueues_(),
+          symbolCache_(symbolCache)
     {
         spscQueues_.reserve(numWorkers_);
         for (size_t i = 0; i < numWorkers_; ++i)
@@ -110,6 +113,7 @@ public:
                 spscQueues_[i],
                 rateLimiter_,
                 balanceCache_,
+                symbolCache_,
                 router_,
                 ringBuffers_,
                 rejectedStateBuffers_,

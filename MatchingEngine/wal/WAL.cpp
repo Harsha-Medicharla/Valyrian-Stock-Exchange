@@ -5,37 +5,21 @@
 #include <stdexcept>
 
 WALSystem::WALSystem(const std::string &path)
-    : logFile(path + ".wal"), tradeFile(path + ".trades")
+    : logFile(path + ".wal")
 {
-  // open log stream immediately, is faster
-
   logStream.open(logFile, std::ios::binary | std::ios::app);
   if (!logStream.is_open())
   {
     throw std::runtime_error("CRITICAL: Failed to open WAL file: " + logFile);
   }
-
-  // Open Trade Stream immediately
-  tradeStream.open(tradeFile, std::ios::app);
-  if (!tradeStream.is_open())
-  {
-    throw std::runtime_error("CRITICAL: Failed to open Trades file: " +
-                             tradeFile);
-  }
 }
 
 WALSystem::~WALSystem()
 {
-  // Ensure all data is written to disk before closing
   if (logStream.is_open())
   {
     logStream.flush();
     logStream.close();
-  }
-  if (tradeStream.is_open())
-  {
-    tradeStream.flush();
-    tradeStream.close();
   }
 }
 
@@ -57,8 +41,6 @@ void WALSystem::writeEntry()
     throw std::runtime_error("CRITICAL: Failed to write to WAL (Disk Full?).");
   }
 
-  // flush to persisten storage
-  logStream.flush();
   ++lastSeq_;
 }
 
@@ -74,6 +56,7 @@ void WALSystem::logInput(WalAction action, const Order *order)
   reusableEntry.data.remaining = order->remaining;
   reusableEntry.data.timestamp = order->timestamp;
   reusableEntry.data.state = order->state;
+  reusableEntry.data.peer_order_id = 0;
 
   writeEntry();
 }
@@ -82,8 +65,11 @@ void WALSystem::logModify(OrderId id, Price newPrice, Qty newQty)
 {
   reusableEntry.action = WalAction::MODIFY;
   reusableEntry.data.order_id = id;
+  reusableEntry.data.peer_order_id = 0;
   reusableEntry.data.price = newPrice;
   reusableEntry.data.quantity = newQty;
+  reusableEntry.data.remaining = 0;
+  reusableEntry.data.timestamp = 0;
 
   writeEntry();
 }
@@ -92,30 +78,27 @@ void WALSystem::logCancel(OrderId id)
 {
   reusableEntry.action = WalAction::CANCEL;
   reusableEntry.data.order_id = id;
+  reusableEntry.data.peer_order_id = 0;
+  reusableEntry.data.price = 0;
+  reusableEntry.data.quantity = 0;
+  reusableEntry.data.remaining = 0;
+  reusableEntry.data.timestamp = 0;
 
   writeEntry();
 }
 
 void WALSystem::logTrade(OrderId aggId, OrderId restId, Price price, Qty qty)
 {
-  if (!tradeStream.good())
-  {
-    std::cerr << "Error: Trade stream is not good." << std::endl;
-    return;
-  }
+  reusableEntry.action = WalAction::TRADE;
+  reusableEntry.data.order_id = aggId;
+  reusableEntry.data.peer_order_id = restId;
+  reusableEntry.data.price = price;
+  reusableEntry.data.quantity = qty;
+  reusableEntry.data.remaining = 0;
+  reusableEntry.data.timestamp = 0;
+  reusableEntry.data.state = OrderState::NEW;
 
-  tradeStream << aggId << "," << restId << "," << price << "," << qty << "\n";
-
-  if (tradeStream.fail())
-  {
-    std::cerr << "Error writing trade to disk (Disk full?)" << std::endl;
-    tradeStream.clear();
-  }
-  else
-  {
-    tradeStream.flush();
-    ++lastSeq_;
-  }
+  writeEntry();
 }
 
 void WALSystem::recover(std::function<void(const LogEntry &)> visitor)

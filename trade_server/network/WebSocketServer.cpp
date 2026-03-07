@@ -280,6 +280,9 @@ void WebSocketServer::unregisterEndpoint(std::uint32_t conn_id) noexcept
 
 bool WebSocketServer::sendToConnection(std::uint32_t conn_id, std::string payload) noexcept
 {
+    if (sendObserver_)
+        sendObserver_(conn_id, payload);
+
     ConnectionEndpoint endpoint{};
     {
         std::lock_guard lock(endpointsMutex_);
@@ -389,7 +392,7 @@ void WebSocketServer::run()
                 .listen(
                     "0.0.0.0",
                     static_cast<int>(port_),
-                    LIBUS_LISTEN_REUSE_PORT,
+                    0,
                     [port = port_](us_listen_socket_t *token) {
                         if (!token)
                         {

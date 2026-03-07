@@ -1,5 +1,9 @@
 # Fetches and builds uSockets (C) + header-only uWebSockets (C++). No OpenSSL.
 
+if(TARGET uwebsockets_vse)
+  return()
+endif()
+
 include(FetchContent)
 
 set(USOCKETS_TAG v0.8.8)

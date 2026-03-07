@@ -41,7 +41,7 @@ struct MatchingEnginePeer
     {
         me.executeTrade(aggressor, resting, price, qty);
     }
-    static void match(MatchingEngine &me, Order *incoming) noexcept { me.match(incoming); }
+    static void match(MatchingEngine &me, Order *incoming) noexcept { me.match(incoming, incoming->timestamp); }
 };
 
 } // namespace vse::test

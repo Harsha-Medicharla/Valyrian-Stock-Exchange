@@ -49,6 +49,14 @@ private:
         return holdingsGroups_[group].slots[idx];
     }
 
+    inline const HoldingsGroup::Slot &holdingsSlot(uint32_t userId, uint32_t symbolId) const noexcept
+    {
+        const std::size_t flat = holdingsFlatIndex(userId, symbolId);
+        const std::size_t group = flat / 8;
+        const std::size_t idx = flat % 8;
+        return holdingsGroups_[group].slots[idx];
+    }
+
 public:
     explicit BalanceCache(std::size_t numSymbols) noexcept
         : balances_(std::make_unique<BalanceEntry[]>(kMaxUsers)),
@@ -155,5 +163,25 @@ public:
         HoldingsGroup::Slot &sl = holdingsSlot(userId, symbolId);
         sl.available_qty.store(availableQty, std::memory_order_release);
         sl.blocked_qty.store(blockedQty, std::memory_order_release);
+    }
+
+    [[nodiscard]] int64_t availableBalance(uint32_t userId) const noexcept
+    {
+        return balances_[static_cast<std::size_t>(userId) % kMaxUsers].available.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] int64_t blockedBalance(uint32_t userId) const noexcept
+    {
+        return balances_[static_cast<std::size_t>(userId) % kMaxUsers].blocked.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] int32_t availableHoldings(uint32_t userId, uint32_t symbolId) const noexcept
+    {
+        return holdingsSlot(userId, symbolId).available_qty.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] int32_t blockedHoldings(uint32_t userId, uint32_t symbolId) const noexcept
+    {
+        return holdingsSlot(userId, symbolId).blocked_qty.load(std::memory_order_acquire);
     }
 };

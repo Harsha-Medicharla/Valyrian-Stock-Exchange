@@ -2,11 +2,14 @@
 
 #include <thread>
 
+#include "trade_server/ThreadAffinity.h"
+
 void DBWriter::flush()
 {
     if (batch_.events().empty())
         return;
-    pgWriter_.writeBatch(batch_.events());
+    if (writer_)
+        writer_->writeBatch(batch_.events());
     for (const DBEvent &e : batch_.events())
     {
         if (e.type == DBEventType::ORDER_FILLED && e.side == Side::BUY)
@@ -34,6 +37,9 @@ void DBWriter::flush()
 
 void DBWriter::run()
 {
+    if (const auto core = vse::threads::coreForRole("PGHandler"))
+        vse::threads::pinToCore(*core);
+
     auto lastFlush = std::chrono::steady_clock::now();
     while (running_.load(std::memory_order_relaxed))
     {

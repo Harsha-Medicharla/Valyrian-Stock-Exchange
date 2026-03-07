@@ -1,0 +1,146 @@
+#include "OrderController.h"
+
+#include <cstdlib>
+
+#include "api_server/db/PGPool.h"
+#include "api_server/middleware/SessionValidator.h"
+
+void OrderController::listOrders(const drogon::HttpRequestPtr &req,
+                                 std::function<void(const drogon::HttpResponsePtr &)> &&callback)
+{
+    const auto userId = SessionValidator::userId(req);
+    if (!userId)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k401Unauthorized);
+        callback(resp);
+        return;
+    }
+
+    try
+    {
+        const auto db = PGPool::client();
+        const auto symbolId = req->getOptionalParameter<uint32_t>("symbol_id");
+        const std::string status = req->getParameter("status");
+        Json::Value out(Json::arrayValue);
+
+        auto appendRows = [&out](const auto &result) {
+            for (const auto &row : result)
+            {
+                Json::Value item(Json::objectValue);
+                item["order_id"] = Json::UInt64(row["order_id"].template as<uint64_t>());
+                item["symbol_id"] = row["symbol_id"].template as<uint32_t>();
+                item["price"] = Json::Int64(row["price"].template as<int64_t>());
+                item["qty"] = row["qty"].template as<int>();
+                item["filled_qty"] = row["filled_qty"].template as<int>();
+                item["side"] = row["side"].template as<int>();
+                item["type"] = row["type"].template as<int>();
+                item["status"] = row["status"].template as<int>();
+                item["timestamp"] = Json::UInt64(row["timestamp"].template as<uint64_t>());
+                out.append(item);
+            }
+        };
+
+        if (!symbolId && status.empty())
+        {
+            const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
+                                                "FROM orders WHERE user_id=$1 ORDER BY timestamp DESC",
+                                                *userId);
+            appendRows(result);
+        }
+        else if (symbolId && status.empty())
+        {
+            const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
+                                                "FROM orders WHERE user_id=$1 AND symbol_id=$2 ORDER BY timestamp DESC",
+                                                *userId, *symbolId);
+            appendRows(result);
+        }
+        else if (status == "pending")
+        {
+            if (symbolId)
+            {
+                const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
+                                                    "FROM orders WHERE user_id=$1 AND symbol_id=$2 AND status IN (0,1) ORDER BY timestamp DESC",
+                                                    *userId, *symbolId);
+                appendRows(result);
+            }
+            else
+            {
+                const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
+                                                    "FROM orders WHERE user_id=$1 AND status IN (0,1) ORDER BY timestamp DESC",
+                                                    *userId);
+                appendRows(result);
+            }
+        }
+        else
+        {
+            const int statusValue = std::atoi(status.c_str());
+            if (symbolId)
+            {
+                const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
+                                                    "FROM orders WHERE user_id=$1 AND symbol_id=$2 AND status=$3 ORDER BY timestamp DESC",
+                                                    *userId, *symbolId, statusValue);
+                appendRows(result);
+            }
+            else
+            {
+                const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
+                                                    "FROM orders WHERE user_id=$1 AND status=$2 ORDER BY timestamp DESC",
+                                                    *userId, statusValue);
+                appendRows(result);
+            }
+        }
+
+        callback(drogon::HttpResponse::newHttpJsonResponse(out));
+    }
+    catch (...)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k500InternalServerError);
+        callback(resp);
+    }
+}
+
+void OrderController::cancelOrder(const drogon::HttpRequestPtr &req,
+                                  std::function<void(const drogon::HttpResponsePtr &)> &&callback,
+                                  uint64_t orderId)
+{
+    const auto userId = SessionValidator::userId(req);
+    if (!userId)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k401Unauthorized);
+        callback(resp);
+        return;
+    }
+
+    try
+    {
+        const auto db = PGPool::client();
+        const auto result = db->execSqlSync("SELECT user_id FROM orders WHERE order_id=$1", orderId);
+        if (result.empty())
+        {
+            auto resp = drogon::HttpResponse::newHttpResponse();
+            resp->setStatusCode(drogon::k404NotFound);
+            callback(resp);
+            return;
+        }
+        if (result[0]["user_id"].as<uint64_t>() != *userId)
+        {
+            auto resp = drogon::HttpResponse::newHttpResponse();
+            resp->setStatusCode(drogon::k403Forbidden);
+            callback(resp);
+            return;
+        }
+
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k202Accepted);
+        callback(resp);
+    }
+    catch (...)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k500InternalServerError);
+        callback(resp);
+    }
+}
