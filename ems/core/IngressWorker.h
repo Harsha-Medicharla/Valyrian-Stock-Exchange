@@ -22,8 +22,6 @@
 #include "RejectHandler.h"
 #include "../utils/SpinWait.h"
 
-inline thread_local EventSPSC<OrderEvent> *tls_rejectQueue = nullptr;
-
 class IngressWorker
 {
 private:
@@ -41,7 +39,7 @@ private:
 
     void run()
     {
-        tls_rejectQueue = rejectQueue_;
+        RejectHandler::setRejectQueue(rejectQueue_);
         if (const auto core = vse::threads::coreForRole("IOThread " + std::to_string(workerIdx_)))
             vse::threads::pinToCore(*core);
 
@@ -116,7 +114,7 @@ private:
             }
         }
 
-        tls_rejectQueue = nullptr;
+        RejectHandler::setRejectQueue(nullptr);
     }
 
 public:

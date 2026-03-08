@@ -8,9 +8,8 @@ inline constexpr char kSqlOrdersUpdate[] =
     "UPDATE orders SET filled_qty = $2, status = $3 WHERE order_id = $1";
 
 inline constexpr char kSqlTradesInsert[] =
-    "INSERT INTO trades (trade_id, symbol_id, buyer_order_id, seller_order_id, buyer_user_id, "
-    "seller_user_id, price, qty, timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT "
-    "(trade_id) DO NOTHING";
+    "INSERT INTO trades (symbol_id, buyer_order_id, seller_order_id, buyer_user_id, "
+    "seller_user_id, price, qty, timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)";
 
 inline constexpr char kSqlBalancesUpdate[] =
     "UPDATE balances SET available = available + $2, blocked = blocked - $3 WHERE user_id = $1";

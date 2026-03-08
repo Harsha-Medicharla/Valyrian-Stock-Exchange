@@ -79,6 +79,7 @@ target_link_libraries(trade_server_app PRIVATE
   vse_market_data_lib
   uwebsockets_vse
   hiredis
+  jsoncpp_static
 )
 
 target_compile_definitions(trade_server_app PRIVATE VSE_HAVE_HIREDIS=1)

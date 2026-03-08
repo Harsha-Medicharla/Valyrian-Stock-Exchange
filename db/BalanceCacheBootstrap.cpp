@@ -14,6 +14,9 @@ void bootstrapBalanceCache(
 {
     (void)numSymbols;
 
+    // DB balances are the durable baseline. Startup must replay the matching-engine WAL after this
+    // bootstrap so in-flight orders and cancellations reconcile BalanceCache to the engine's truth.
+
     PGconn *conn = PQconnectdb(pgConnString.c_str());
     if (!conn || PQstatus(conn) != CONNECTION_OK)
     {

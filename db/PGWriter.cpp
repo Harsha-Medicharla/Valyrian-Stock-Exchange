@@ -97,8 +97,6 @@ void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
 
             if (event.side == Side::BUY)
             {
-                const std::string tradeId = std::to_string(
-                    nextTradeId_.fetch_add(1, std::memory_order_relaxed));
                 const std::string symbolId = std::to_string(event.symbol_id);
                 const std::string buyerOrderId = std::to_string(event.order_id);
                 const std::string sellerOrderId = std::to_string(event.peer_order_id);
@@ -108,10 +106,10 @@ void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
                 const std::string fillQty = std::to_string(event.fill_qty);
                 const std::string ts = std::to_string(event.timestamp);
                 const char *tradeValues[] = {
-                    tradeId.c_str(),     symbolId.c_str(),     buyerOrderId.c_str(),
-                    sellerOrderId.c_str(), buyerUserId.c_str(), sellerUserId.c_str(),
-                    fillPrice.c_str(),   fillQty.c_str(),      ts.c_str()};
-                if (!execParamsText(kSqlTradesInsert, 9, tradeValues))
+                    symbolId.c_str(),      buyerOrderId.c_str(), sellerOrderId.c_str(),
+                    buyerUserId.c_str(),   sellerUserId.c_str(), fillPrice.c_str(),
+                    fillQty.c_str(),       ts.c_str()};
+                if (!execParamsText(kSqlTradesInsert, 8, tradeValues))
                 {
                     rollback();
                     return;

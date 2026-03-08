@@ -45,7 +45,7 @@ add_executable(api_server_app
   db/PGPool.cpp
   db/RedisPool.cpp
 )
-target_link_libraries(api_server_app PRIVATE Threads::Threads drogon hiredis)
+target_link_libraries(api_server_app PRIVATE Threads::Threads drogon hiredis jsoncpp_static)
 
 target_include_directories(api_server_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}

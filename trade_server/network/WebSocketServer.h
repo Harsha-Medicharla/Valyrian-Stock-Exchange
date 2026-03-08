@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <functional>
@@ -17,6 +18,7 @@
 #include "resp/IdGenerators.h"
 
 struct redisContext;
+struct us_listen_socket_t;
 namespace uWS
 {
 class Loop;
@@ -30,6 +32,7 @@ private:
     std::uint16_t port_;
     std::string redis_host_;
     int redis_port_;
+    bool redis_enabled_{true};
     IdGenerator order_ids_;
     std::size_t num_symbols_{0};
     std::unique_ptr<std::atomic<uint64_t>[]> server_seq_by_symbol_;
@@ -41,7 +44,13 @@ private:
     };
     std::vector<ConnectionEndpoint> endpoints_;
     std::mutex endpointsMutex_;
+    std::vector<uWS::Loop *> loops_;
+    std::vector<us_listen_socket_t *> listenSockets_;
+    std::mutex loopMutex_;
     std::atomic<std::uint64_t> nextEndpointGeneration_{1};
+    std::atomic<bool> running_{false};
+    std::atomic<bool> cancelSubscriberRunning_{false};
+    std::thread cancelSubscriberThread_;
     std::function<void(std::uint32_t, const std::string &)> sendObserver_;
 
     [[nodiscard]] bool devSkipAuth() const noexcept;
@@ -52,9 +61,12 @@ private:
     void handleFlatBufferMessage(std::uint64_t user_id, std::uint32_t conn_id, std::string_view message) noexcept;
     void registerEndpoint(std::uint32_t conn_id, uWS::Loop *loop, void *socket) noexcept;
     void unregisterEndpoint(std::uint32_t conn_id) noexcept;
+    void registerLoop(uWS::Loop *loop, us_listen_socket_t *listenSocket) noexcept;
+    void runCancelSubscriber() noexcept;
 
 public:
     explicit WebSocketServer(EMSCore &ems, std::uint16_t port);
+    WebSocketServer(EMSCore &ems, std::uint16_t port, bool redisEnabled);
     ~WebSocketServer();
 
     WebSocketServer(const WebSocketServer &) = delete;
@@ -69,6 +81,8 @@ public:
     }
 
     [[nodiscard]] ConnTable &connTable() noexcept { return connTable_; }
+    [[nodiscard]] bool pushCancelOrder(std::uint64_t user_id, std::uint32_t symbol_id,
+                                       std::uint64_t order_id) noexcept;
 
     [[nodiscard]] bool sendToConnection(std::uint32_t conn_id, std::string payload) noexcept;
     void setSendObserver(std::function<void(std::uint32_t, const std::string &)> observer) noexcept
@@ -77,4 +91,7 @@ public:
     }
 
     void run();
+    void startCancelSubscriber();
+    void stopCancelSubscriber() noexcept;
+    void stop() noexcept;
 };
