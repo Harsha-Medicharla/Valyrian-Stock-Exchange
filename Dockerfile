@@ -2,7 +2,7 @@ FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-ARG CACHE_BUST=4
+ARG CACHE_BUST=5
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \

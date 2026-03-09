@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "core/EMSCore.h"
+#include "ems/pipeline/BalanceCache.h"
 #include "types/RawOrder.h"
 #include "ConnTable.h"
 #include "config/TradeServerConfig.h"
@@ -52,6 +53,8 @@ private:
     std::atomic<bool> stopCalled_{false};
     std::atomic<bool> cancelSubscriberRunning_{false};
     std::thread cancelSubscriberThread_;
+    std::thread balanceSyncThread_;
+    std::atomic<bool> balanceSyncRunning_{false};
     std::function<void(std::uint32_t, const std::string &)> sendObserver_;
 
     [[nodiscard]] bool devSkipAuth() const noexcept;
@@ -64,6 +67,8 @@ private:
     void unregisterEndpoint(std::uint32_t conn_id) noexcept;
     void registerLoop(uWS::Loop *loop, us_listen_socket_t *listenSocket) noexcept;
     void runCancelSubscriber() noexcept;
+    void runBalanceSyncSubscriber() noexcept;
+    void runBalanceSyncSubscriberImpl(BalanceCache &cache) noexcept;
 
 public:
     explicit WebSocketServer(EMSCore &ems, std::uint16_t port);
@@ -94,5 +99,7 @@ public:
     void run();
     void startCancelSubscriber();
     void stopCancelSubscriber() noexcept;
+    void startBalanceSyncSubscriber(BalanceCache &cache) noexcept;
+    void stopBalanceSyncSubscriber() noexcept;
     void stop() noexcept;
 };

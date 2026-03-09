@@ -28,6 +28,7 @@ services:
       retries: 12
 
   trade_server:
+    platform: linux/arm64
     build:
       context: .
     environment:
@@ -47,6 +48,7 @@ services:
     command: ["./build/trade_server/trade_server_app"]
 
   api_server:
+    platform: linux/arm64
     build:
       context: .
     environment:

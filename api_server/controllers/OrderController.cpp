@@ -18,6 +18,8 @@ void OrderController::listOrders(const drogon::HttpRequestPtr &req,
         callback(resp);
         return;
     }
+    const uint32_t limit =
+        req->getOptionalParameter<uint32_t>("limit").value_or(200);
 
     try
     {
@@ -46,15 +48,15 @@ void OrderController::listOrders(const drogon::HttpRequestPtr &req,
         if (!symbolId && status.empty())
         {
             const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
-                                                "FROM orders WHERE user_id=$1 ORDER BY timestamp DESC",
-                                                *userId);
+                                                "FROM orders WHERE user_id=$1 ORDER BY timestamp DESC LIMIT $2",
+                                                *userId, limit);
             appendRows(result);
         }
         else if (symbolId && status.empty())
         {
             const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
-                                                "FROM orders WHERE user_id=$1 AND symbol_id=$2 ORDER BY timestamp DESC",
-                                                *userId, *symbolId);
+                                                "FROM orders WHERE user_id=$1 AND symbol_id=$2 ORDER BY timestamp DESC LIMIT $3",
+                                                *userId, *symbolId, limit);
             appendRows(result);
         }
         else if (status == "pending")
@@ -62,15 +64,15 @@ void OrderController::listOrders(const drogon::HttpRequestPtr &req,
             if (symbolId)
             {
                 const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
-                                                    "FROM orders WHERE user_id=$1 AND symbol_id=$2 AND status IN (0,1) ORDER BY timestamp DESC",
-                                                    *userId, *symbolId);
+                                                    "FROM orders WHERE user_id=$1 AND symbol_id=$2 AND status IN (0,1) ORDER BY timestamp DESC LIMIT $3",
+                                                    *userId, *symbolId, limit);
                 appendRows(result);
             }
             else
             {
                 const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
-                                                    "FROM orders WHERE user_id=$1 AND status IN (0,1) ORDER BY timestamp DESC",
-                                                    *userId);
+                                                    "FROM orders WHERE user_id=$1 AND status IN (0,1) ORDER BY timestamp DESC LIMIT $2",
+                                                    *userId, limit);
                 appendRows(result);
             }
         }
@@ -80,15 +82,15 @@ void OrderController::listOrders(const drogon::HttpRequestPtr &req,
             if (symbolId)
             {
                 const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
-                                                    "FROM orders WHERE user_id=$1 AND symbol_id=$2 AND status=$3 ORDER BY timestamp DESC",
-                                                    *userId, *symbolId, statusValue);
+                                                    "FROM orders WHERE user_id=$1 AND symbol_id=$2 AND status=$3 ORDER BY timestamp DESC LIMIT $4",
+                                                    *userId, *symbolId, statusValue, limit);
                 appendRows(result);
             }
             else
             {
                 const auto result = db->execSqlSync("SELECT order_id, symbol_id, price, qty, filled_qty, side, type, status, timestamp "
-                                                    "FROM orders WHERE user_id=$1 AND status=$2 ORDER BY timestamp DESC",
-                                                    *userId, statusValue);
+                                                    "FROM orders WHERE user_id=$1 AND status=$2 ORDER BY timestamp DESC LIMIT $3",
+                                                    *userId, statusValue, limit);
                 appendRows(result);
             }
         }

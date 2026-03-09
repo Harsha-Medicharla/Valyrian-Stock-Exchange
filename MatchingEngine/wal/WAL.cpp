@@ -25,23 +25,25 @@ WALSystem::~WALSystem()
 
 void WALSystem::writeEntry()
 {
-  // doesn't write if stream is broken
-  if (!logStream.good())
-  {
-    throw std::runtime_error("WAL Stream is in a bad state before write.");
-  }
+    if (!logStream.good())
+        throw std::runtime_error("WAL Stream is in a bad state before write.");
 
-  logStream.write(reinterpret_cast<const char *>(&reusableEntry),
-                  sizeof(LogEntry));
+    logStream.write(reinterpret_cast<const char *>(&reusableEntry),
+                    sizeof(LogEntry));
+    if (logStream.fail())
+    {
+        logStream.clear();
+        throw std::runtime_error("CRITICAL: Failed to write to WAL (Disk Full?).");
+    }
 
-  // Check for immediate write failure
-  if (logStream.fail())
-  {
-    logStream.clear();
-    throw std::runtime_error("CRITICAL: Failed to write to WAL (Disk Full?).");
-  }
+    logStream.flush();
+    if (logStream.fail())
+    {
+        logStream.clear();
+        throw std::runtime_error("CRITICAL: Failed to flush WAL.");
+    }
 
-  ++lastSeq_;
+    ++lastSeq_;
 }
 
 void WALSystem::logInput(WalAction action, const Order *order)

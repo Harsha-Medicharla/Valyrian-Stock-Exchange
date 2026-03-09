@@ -1,6 +1,7 @@
 #include "AccountController.h"
 
 #include "api_server/db/PGPool.h"
+#include "api_server/db/RedisPool.h"
 #include "api_server/middleware/SessionValidator.h"
 
 void AccountController::getAccount(const drogon::HttpRequestPtr &req,
