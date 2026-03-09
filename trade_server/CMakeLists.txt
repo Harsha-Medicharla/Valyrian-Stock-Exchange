@@ -43,7 +43,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/UsocketsUWebSockets.cmake)
 FetchContent_Declare(
   vse_flatbuffers_headers
   GIT_REPOSITORY https://github.com/google/flatbuffers.git
-  GIT_TAG v24.3.25
+  GIT_TAG v24.3.25  # Force version match with Docker/Ubuntu 24.04
   GIT_SHALLOW TRUE
 )
 FetchContent_GetProperties(vse_flatbuffers_headers)

@@ -84,7 +84,7 @@ private:
                         out->modify_flag = slot->modify_flag;
                         rb.publish(ringSeq);
 
-                        if (idx < dbQueues_.size())
+                        if (slot->cancel_flag == 0 && slot->modify_flag == 0 && idx < dbQueues_.size())
                         {
                             DBEvent de{};
                             de.wal_sequence = static_cast<SeqNo>(slot->sequence);
