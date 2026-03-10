@@ -218,15 +218,68 @@ void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
         }
         case DBEventType::ORDER_MODIFIED: {
             const std::string orderId = std::to_string(event.order_id);
+            const std::string priceStr = std::to_string(event.price);
+            const std::string qtyStr = std::to_string(event.qty);
             const std::string filledQty = std::to_string(event.qty - event.remaining);
             const std::string status = std::to_string(static_cast<int>(event.state));
-            const std::string zeroPrice = "0";
-            const char *values[] = {
-                orderId.c_str(), filledQty.c_str(), status.c_str(), zeroPrice.c_str()};
-            if (!execParamsText(kSqlOrdersUpdate, 4, values))
+
+            const char *values[] = {orderId.c_str(), priceStr.c_str(), qtyStr.c_str(), filledQty.c_str(), status.c_str()};
+            if (!execParamsText(
+                "UPDATE orders SET price = $2, qty = $3, filled_qty = $4, status = $5 WHERE order_id = $1",
+                5, values))
             {
                 rollback();
                 return;
+            }
+
+            if (event.fill_qty < 0)
+            {
+                const int64_t reduction = -event.fill_qty;
+                if (event.side == Side::BUY)
+                {
+                    const std::string unblockAmt = std::to_string(event.price * reduction);
+                    const std::string userId = std::to_string(event.user_id);
+                    const char *bv[] = {userId.c_str(), unblockAmt.c_str()};
+                    if (!execParamsText("UPDATE balances SET available = available + $2, blocked = blocked - $2 WHERE user_id = $1", 2, bv))
+                    {
+                        rollback(); return;
+                    }
+                }
+                else
+                {
+                    const std::string userId = std::to_string(event.user_id);
+                    const std::string symId = std::to_string(event.symbol_id);
+                    const std::string qtyStrVal = std::to_string(reduction);
+                    const char *hv[] = {userId.c_str(), symId.c_str(), qtyStrVal.c_str()};
+                    if (!execParamsText("UPDATE holdings SET available_qty = available_qty + $3, blocked_qty = blocked_qty - $3 WHERE user_id = $1 AND symbol_id = $2", 3, hv))
+                    {
+                        rollback(); return;
+                    }
+                }
+            }
+            else if (event.fill_qty > 0)
+            {
+                if (event.side == Side::BUY)
+                {
+                    const std::string blockAmt = std::to_string(event.price * event.fill_qty);
+                    const std::string userId = std::to_string(event.user_id);
+                    const char *bv[] = {userId.c_str(), blockAmt.c_str()};
+                    if (!execParamsText("UPDATE balances SET available = available - $2, blocked = blocked + $2 WHERE user_id = $1", 2, bv))
+                    {
+                        rollback(); return;
+                    }
+                }
+                else
+                {
+                    const std::string userId = std::to_string(event.user_id);
+                    const std::string symId = std::to_string(event.symbol_id);
+                    const std::string qtyStrVal = std::to_string(event.fill_qty);
+                    const char *hv[] = {userId.c_str(), symId.c_str(), qtyStrVal.c_str()};
+                    if (!execParamsText("UPDATE holdings SET available_qty = available_qty - $3, blocked_qty = blocked_qty + $3 WHERE user_id = $1 AND symbol_id = $2", 3, hv))
+                    {
+                        rollback(); return;
+                    }
+                }
             }
             break;
         }

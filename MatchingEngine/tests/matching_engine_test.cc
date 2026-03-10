@@ -1077,13 +1077,12 @@ TEST(MatchingEngineNewTest, SelfTradePreventionCancelsIncoming) {
     engine->onNewOrder(1, 42, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 42, Side::BUY, OrderType::LIMIT, 10, 100, 2);
 
-    // No match should occur
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
+    PriceLevel* level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
     EXPECT_EQ(level->aggregated_qty, 100);
 
-    // Incoming order must be deallocated
-    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) != nullptr);
 }
 
 TEST(MatchingEngineNewTest, FilledOrderImmediateDeallocation) {

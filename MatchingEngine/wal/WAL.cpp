@@ -100,7 +100,12 @@ void WALSystem::logTrade(OrderId aggId, OrderId restId, Price price, Qty qty)
   reusableEntry.data.timestamp = 0;
   reusableEntry.data.state = OrderState::NEW;
 
-  writeEntry();
+  std::string tradeFile = logFile.substr(0, logFile.find_last_of('.')) + ".trades";
+  std::ofstream tradeStream(tradeFile, std::ios::binary | std::ios::app);
+  if (tradeStream.is_open())
+  {
+    tradeStream << aggId << "," << restId << "," << price << "," << qty << "\n";
+  }
 }
 
 void WALSystem::recover(std::function<void(const LogEntry &)> visitor)
