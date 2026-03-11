@@ -59,6 +59,24 @@ struct alignas(64) TradeEvent
 
 static_assert(sizeof(TradeEvent) == 64, "TradeEvent layout");
 
+// ── BookUpdateEvent ──────────────────────────────────────────────────────────
+// Written by: MatchingEngine after every onNewOrder (resting) and onCancelOrder
+// Read by:    MarketDataPublisher
+// Purpose:    Keeps best_bid / best_ask fresh even when no trade occurs.
+
+struct alignas(64) BookUpdateEvent
+{
+    uint32_t  symbol_id;
+    uint8_t   _pad0[4];
+    Price     best_bid;   // 0 if book is empty
+    Price     best_ask;   // 0 if book is empty
+    TimeStamp timestamp;
+    uint8_t   _pad1[32];
+    // 4+4+8+8+8+32 = 64 bytes
+};
+
+static_assert(sizeof(BookUpdateEvent) == 64, "BookUpdateEvent layout");
+
 // ── DBEvent ──────────────────────────────────────────────────────────────────
 // Written by: MatchingEngine (fills, cancels, modifies) and
 //             IngressWorker via RejectHandler (accepted orders — for orders table)

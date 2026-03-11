@@ -23,6 +23,7 @@ class MarketDataPublisher
 {
 private:
     std::vector<EventSPSC<TradeEvent>> *tradeQueues_{nullptr};
+    std::vector<EventSPSC<BookUpdateEvent>> *bookUpdateQueues_{nullptr};
     uint32_t numSymbols_{0};
     uint16_t wsPort_{0};
     CandleBuilder candleBuilder_;
@@ -40,13 +41,16 @@ private:
 
     void run();
     void processTradeEvent(uint32_t sym, const TradeEvent &ev);
+    void processBookUpdateEvent(uint32_t sym, const BookUpdateEvent &ev);
     void runWs();
     void publishToTopic(std::string topic, std::string payload);
 
 public:
-    MarketDataPublisher(std::vector<EventSPSC<TradeEvent>> &tradeQueues, uint32_t numSymbols,
-                        uint16_t wsPort)
+    MarketDataPublisher(std::vector<EventSPSC<TradeEvent>> &tradeQueues,
+                        std::vector<EventSPSC<BookUpdateEvent>> &bookUpdateQueues,
+                        uint32_t numSymbols, uint16_t wsPort)
         : tradeQueues_(&tradeQueues),
+          bookUpdateQueues_(&bookUpdateQueues),
           numSymbols_(numSymbols),
           wsPort_(wsPort),
           candleBuilder_(numSymbols),

@@ -38,12 +38,12 @@ services:
       REDIS_PORT: 6379
       VSE_WS_PORT: 9001
       VSE_MDP_WS_PORT: 9002
-      VSE_WAL_DIR: "/app/data"  # Force WAL directory to write to the volume path
+      VSE_WAL_DIR: "/app/wal"
     ports:
       - "9001:9001"
       - "9002:9002"
     volumes:
-      - trade_wal_data:/app/data
+      - trade_wal_data:/app/wal
     depends_on:
       postgres:
         condition: service_healthy

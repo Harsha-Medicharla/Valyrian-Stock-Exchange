@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cstdlib>
 #include "VseTestPeer.h"
 
 static std::string walPath(int id) {
@@ -954,32 +955,16 @@ TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
         MatchingEngine *engine = new MatchingEngine(28);
 
         // ADD BUY
-        engine->onNewOrder(
-            1,          // order_id
-            10,         // user_id
-            Side::BUY,
-            OrderType::LIMIT,
-            10,         // price
-            100,        // quantity
-            1           // timestamp
-        );
-
+        engine->onNewOrder(1, 10, Side::BUY, OrderType::LIMIT, 10, 100, 1);
         // ADD SELL
-        engine->onNewOrder(
-            2,
-            20,
-            Side::SELL,
-            OrderType::LIMIT,
-            11,
-            100,
-            2
-        );
-
+        engine->onNewOrder(2, 20, Side::SELL, OrderType::LIMIT, 11, 100, 2);
         // CANCEL BUY
         engine->onCancelOrder(1);
-
         // MODIFY SELL
         engine->onModifyOrder(2, 12, 150);
+
+        // FIX: Properly destruct the engine to flush the file stream to disk
+        delete engine;
     }
 
     // Read WAL
@@ -1019,25 +1004,16 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
         MatchingEngine *engine = new MatchingEngine(29);
 
         // SELL 100 @ 10
-        engine->onNewOrder(
-            1, 10, Side::SELL, OrderType::LIMIT,
-            10, 100, 1
-        );
-
+        engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
         // SELL 50 @ 11
-        engine->onNewOrder(
-            2, 10, Side::SELL, OrderType::LIMIT,
-            11, 50, 2
-        );
-
+        engine->onNewOrder(2, 10, Side::SELL, OrderType::LIMIT, 11, 50, 2);
         // BUY 70 @ 10 (partial fill of s1)
-        engine->onNewOrder(
-            3, 20, Side::BUY, OrderType::LIMIT,
-            10, 70, 3
-        );
-
+        engine->onNewOrder(3, 20, Side::BUY, OrderType::LIMIT, 10, 70, 3);
         // CANCEL SELL @ 11
         engine->onCancelOrder(2);
+
+        // FIX: Destroy to flush bytes
+        delete engine;
     }
 
     // -------- Recovery run --------
@@ -1049,9 +1025,7 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     // SELL side must have exactly one level (@10)
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).size(), 1);
 
-    PriceLevel* level =
-        vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
-
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
     ASSERT_NE(level, nullptr);
 
     // Remaining qty must be 30
@@ -1065,6 +1039,9 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
 
     EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*recovered)), level);
     EXPECT_TRUE(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*recovered)) == nullptr);
+
+    // FIX: Cleanup
+    delete recovered; 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1123,6 +1100,16 @@ TEST(MatchingEngineNewTest, WALRecoveryInternalOnNewOrderPath) {
 
 
 int main(int argc,char* argv[]){
+    // 1. Force WAL files to drop locally during tests, bypassing the Docker env
+#ifdef __linux__
+    unsetenv("VSE_WAL_DIR");
+#else
+    setenv("VSE_WAL_DIR", "", 1);
+#endif
+
+    int ret = system("rm -f *.wal *.trades test_wal_* engine_*.wal /app/wal/*.wal /app/wal/*.trades 2>/dev/null");
+    (void)ret;
+
     testing::InitGoogleTest(&argc,argv);
     return RUN_ALL_TESTS();
 }
