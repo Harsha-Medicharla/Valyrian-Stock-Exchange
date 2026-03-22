@@ -1,15 +1,9 @@
 #pragma once
 #include "OrderRequest.h" 
-
+#include "RejectReason.h"
 namespace EMS {
 namespace model {
 
-enum class RejectReason {
-    NONE,
-    AUTH_FAILED,
-    MARKET_CLOSED,
-    RISK_EXCEEDED
-};
 
 struct EMSDecision {
     bool accepted;

@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "MatchingEngine.h"
+#include "SettlementModule.h"
+static Settlement::SettlementModule global_bank;
 
 static std::string walPath(int id) {
     return "test_wal_" + std::to_string(id);
@@ -182,7 +184,7 @@ TEST(OrderBookTest, RemovePriceLevelIfEmpty) {
 // test 13
 // updateOrderState() (MatchingEngine)
 TEST(OrderStateTest, UpdateOrderState) {
-    MatchingEngine *engine = new MatchingEngine(7);
+    MatchingEngine *engine = new MatchingEngine(7,global_bank);
 
     Order o{};
 
@@ -318,7 +320,7 @@ TEST(OrderBookTest, GetOrderAtBestPrice) {
 // test 4
 // match() (without crossing)
 TEST(MatchingEngineUnitTest, MatchStopsOnNoCross) {
-    MatchingEngine *engine = new MatchingEngine(8);
+    MatchingEngine *engine = new MatchingEngine(8,global_bank);
 
     engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
 
@@ -331,7 +333,7 @@ TEST(MatchingEngineUnitTest, MatchStopsOnNoCross) {
 // test 5
 // executeTrade() (WAL side-effect only)
 TEST(MatchingEngineUnitTest, ExecuteTradeDoesNotMutateOrders) {
-    MatchingEngine *engine = new MatchingEngine(9);
+    MatchingEngine *engine = new MatchingEngine(9,global_bank);
 
     Order a{}, b{};
     a.remaining = 50;
@@ -347,7 +349,7 @@ TEST(MatchingEngineUnitTest, ExecuteTradeDoesNotMutateOrders) {
 // test 6
 // onNewOrder()
 TEST(MatchingEngineUnitTest, OnNewOrderRestingLimit) {
-    MatchingEngine *engine = new MatchingEngine(10);
+    MatchingEngine *engine = new MatchingEngine(10,global_bank);
 
     bool ok = engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
 
@@ -359,7 +361,7 @@ TEST(MatchingEngineUnitTest, OnNewOrderRestingLimit) {
 // test 7
 // Cancel filled order
 TEST(MatchingEngineUnitTest, CancelFilledOrderFails) {
-    MatchingEngine *engine = new MatchingEngine(11);
+    MatchingEngine *engine = new MatchingEngine(11,global_bank);
 
     Order* o = engine->order_book.requestAllocationOfOrder();
     *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
@@ -372,7 +374,7 @@ TEST(MatchingEngineUnitTest, CancelFilledOrderFails) {
 // test 8
 // Modify non-existent order
 TEST(MatchingEngineUnitTest, ModifyNonExistentOrder) {
-    MatchingEngine *engine = new MatchingEngine(12);
+    MatchingEngine *engine = new MatchingEngine(12  ,global_bank);
     EXPECT_FALSE(engine->onModifyOrder(999, 10, 100));
 }
 
@@ -380,7 +382,7 @@ TEST(MatchingEngineUnitTest, ModifyNonExistentOrder) {
 // test 9
 // Modify filled order fails safely
 TEST(MatchingEngineTest, ModifyFilledOrderFails) {
-    MatchingEngine *engine = new MatchingEngine(13);
+    MatchingEngine *engine = new MatchingEngine(13,global_bank);
 
     Order* o = engine->order_book.requestAllocationOfOrder();
     *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
@@ -393,7 +395,7 @@ TEST(MatchingEngineTest, ModifyFilledOrderFails) {
 // Reduce quantity only (same price)
 
 TEST(MatchingEngineTest, ModifyReduceQuantitySamePrice) {
-    MatchingEngine *engine = new MatchingEngine(14);
+    MatchingEngine *engine = new MatchingEngine(14,global_bank);
 
     engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
 
@@ -410,7 +412,7 @@ TEST(MatchingEngineTest, ModifyReduceQuantitySamePrice) {
 // test 11
 // Modify causes cancel + reinsert
 TEST(MatchingEngineTest, ModifyPriceCausesReinsert) {
-    MatchingEngine *engine = new MatchingEngine(15);
+    MatchingEngine *engine = new MatchingEngine(15,global_bank);
 
     engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
 
@@ -438,7 +440,7 @@ What this test guarantees
 	•	Pool is untouched
 */
 TEST(MatchingEngineTest, EmptyBookOnStartup) {
-    MatchingEngine *engine = new MatchingEngine(16);
+    MatchingEngine *engine = new MatchingEngine(16,global_bank);
     // Buy & sell ladders must be empty
     EXPECT_TRUE(engine->order_book.buy_book.empty());
     EXPECT_TRUE(engine->order_book.sell_book.empty());
@@ -460,7 +462,7 @@ What this test validates
 	•	No accidental matching
 */
 TEST(MatchingEngineTest, InsertBuyLimitNoMatch) {
-    MatchingEngine *engine = new MatchingEngine(17);
+    MatchingEngine *engine = new MatchingEngine(17,global_bank);
 
     engine->onNewOrder(1,42,Side::BUY,OrderType::LIMIT,10,100,1);
 
@@ -488,7 +490,7 @@ This test mirrors Test 2 but on the sell side, and it validates:
 	•	FIFO correctness on sell side
 */
 TEST(MatchingEngineTest, InsertSellLimitNoMatch) {
-    MatchingEngine *engine = new MatchingEngine(18);
+    MatchingEngine *engine = new MatchingEngine(18,global_bank);
 
     engine->onNewOrder(2,99,Side::SELL,OrderType::LIMIT,20,150,1);
 
@@ -518,7 +520,7 @@ What this test validates
 	•	Pool deallocation safety
 */
 TEST(MatchingEngineTest, ExactPriceCrossFullFill) {
-    MatchingEngine *engine = new MatchingEngine(19);
+    MatchingEngine *engine = new MatchingEngine(19,global_bank);
 
     engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
     engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,100,2);
@@ -543,7 +545,7 @@ This test validates that:
 	•	Best bid / ask is preserved
 */
 TEST(MatchingEngineTest, PartialFillSingleLevel) {
-    MatchingEngine *engine = new MatchingEngine(20);
+    MatchingEngine *engine = new MatchingEngine(20,global_bank);
 
     // Insert SELL
     engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 200, 1);
@@ -581,7 +583,7 @@ What this test validates
 	•	No pointer corruption
 */
 TEST(MatchingEngineTest, FIFOAtSamePriceLevel) {
-    MatchingEngine *engine = new MatchingEngine(21);
+    MatchingEngine *engine = new MatchingEngine(21,global_bank);
 
     engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 20, Side::SELL, OrderType::LIMIT, 10, 100, 2);
@@ -617,7 +619,7 @@ What this test validates
 	•	No FIFO leakage across price levels
 */
 TEST(MatchingEngineTest, PricePriorityAcrossLevels) {
-    MatchingEngine *engine = new MatchingEngine(22);
+    MatchingEngine *engine = new MatchingEngine(22,global_bank);
 
     engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 20, Side::SELL, OrderType::LIMIT, 9, 100, 2);
@@ -653,7 +655,7 @@ What this test validates
 	•	Book integrity after sweep
 */
 TEST(MatchingEngineTest, MarketOrderSweep) {
-    MatchingEngine *engine = new MatchingEngine(23);
+    MatchingEngine *engine = new MatchingEngine(23,global_bank);
 
     engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 20, Side::SELL, OrderType::LIMIT, 11, 100, 2);
@@ -697,7 +699,7 @@ Expected behavior
 	•	No crash, no dangling pointers
 */
 TEST(MatchingEngineTest, CancelRestingOrder) {
-    MatchingEngine *engine = new MatchingEngine(24);
+    MatchingEngine *engine = new MatchingEngine(24,global_bank);
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::LIMIT, 10, 100, 1);
 
@@ -723,7 +725,7 @@ This test ensures:
 	•	New price level is respected
 */
 TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
-    MatchingEngine *engine = new MatchingEngine(25);
+    MatchingEngine *engine = new MatchingEngine(25,global_bank);
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::LIMIT, 10, 100, 1);
 
@@ -752,7 +754,7 @@ TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
 // test 11
 // test to cancel non-existing orders
 TEST(MatchingEngineTest, CancelNonExistentOrder) {
-    MatchingEngine *engine = new MatchingEngine(26);
+    MatchingEngine *engine = new MatchingEngine(26,global_bank);
     engine->onCancelOrder(999);  // should not crash
     EXPECT_TRUE(engine->order_book.buy_book.empty());
     EXPECT_TRUE(engine->order_book.sell_book.empty());
@@ -762,7 +764,7 @@ TEST(MatchingEngineTest, CancelNonExistentOrder) {
 // test 12
 // test to place market order on empty order book
 TEST(MatchingEngineTest, MarketOrderOnEmptyBook) {
-    MatchingEngine *engine = new MatchingEngine(27);
+    MatchingEngine *engine = new MatchingEngine(27,global_bank);
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::MARKET, 0, 100, 1);
 
@@ -954,7 +956,7 @@ What this test PROVES
 */
 TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
     {
-        MatchingEngine *engine = new MatchingEngine(28);
+        MatchingEngine *engine = new MatchingEngine(28,global_bank);
 
         // ADD BUY
         engine->onNewOrder(
@@ -1019,7 +1021,7 @@ This validates:
 TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     // -------- First run (generate WAL) --------
     {
-        MatchingEngine *engine = new MatchingEngine(29);
+        MatchingEngine *engine = new MatchingEngine(29,global_bank);
 
         // SELL 100 @ 10
         engine->onNewOrder(
@@ -1044,7 +1046,7 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     }
 
     // -------- Recovery run --------
-    MatchingEngine *recovered = new MatchingEngine(29);
+    MatchingEngine *recovered = new MatchingEngine(29,global_bank);
 
     // BUY side must be empty
     EXPECT_TRUE(recovered->order_book.buy_book.empty());
@@ -1075,7 +1077,7 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
 ///////////////////////////////////////////////////////////////////////////////////
 
 TEST(MatchingEngineNewTest, SelfTradePreventionCancelsIncoming) {
-    MatchingEngine *engine = new MatchingEngine(100);
+    MatchingEngine *engine = new MatchingEngine(100,global_bank);
 
     engine->onNewOrder(1, 42, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 42, Side::BUY, OrderType::LIMIT, 10, 100, 2);
@@ -1090,7 +1092,7 @@ TEST(MatchingEngineNewTest, SelfTradePreventionCancelsIncoming) {
 }
 
 TEST(MatchingEngineNewTest, FilledOrderImmediateDeallocation) {
-    MatchingEngine *engine = new MatchingEngine(101);
+    MatchingEngine *engine = new MatchingEngine(101,global_bank);
 
     engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
     engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,100,2);
@@ -1100,7 +1102,7 @@ TEST(MatchingEngineNewTest, FilledOrderImmediateDeallocation) {
 }
 
 TEST(MatchingEngineNewTest, MarketOrderImmediateDeallocation) {
-    MatchingEngine *engine = new MatchingEngine(102);
+    MatchingEngine *engine = new MatchingEngine(102,global_bank);
 
     engine->onNewOrder(1,10,Side::BUY,OrderType::MARKET,0,100,1);
 
@@ -1110,12 +1112,12 @@ TEST(MatchingEngineNewTest, MarketOrderImmediateDeallocation) {
 
 TEST(MatchingEngineNewTest, WALRecoveryInternalOnNewOrderPath) {
     {
-        MatchingEngine *engine = new MatchingEngine(103);
+        MatchingEngine *engine = new MatchingEngine(103,global_bank);
         engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
         engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,70,2);
     }
 
-    MatchingEngine *recovered = new MatchingEngine(103);
+    MatchingEngine *recovered = new MatchingEngine(103,global_bank);
 
     ASSERT_EQ(recovered->order_book.sell_book.size(), 1);
 

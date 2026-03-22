@@ -17,8 +17,6 @@ namespace EMS {
         void join();
     private:
         void run();
-        
-        // ADD THIS LINE RIGHT HERE
         void pinThreadToCore(int core_id); 
 
         RingBuffer<model::OrderRequest, 1024>& queue_;

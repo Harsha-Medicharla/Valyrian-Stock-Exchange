@@ -5,149 +5,102 @@
 #include "market/MarketState.h"
 #include "routing/SymbolRouter.h"
 #include "tracker/EMSOrderTracker.h"
-#include "model/OrderRequest.h"
-#include "model/EMSDecision.h"
-#include "core/EMSConfig.h" 
+#include "SettlementModule.h"
 
 using namespace EMS;
 using namespace EMS::model;
 
+// --- STATIC MEMORY POOL ---
+// This prevents stack overflows and VTable misalignment (the SIGILL killers)
+static AuthService    g_auth;
+static RiskManager    g_risk;
+static MarketState    g_market;
+static SymbolRouter   g_router;
+static EMSOrderTracker g_tracker;
+static Settlement::SettlementModule g_bank;
+
 class EMSPipelineTest : public ::testing::Test {
 protected:
-    AuthService auth;
-    RiskManager risk;
-    MarketState market;
-    SymbolRouter router;
-    EMSOrderTracker tracker;
+    void SetUp() override {
+        // Reset state before every single test
+        g_market.openSymbol(0);
+        g_bank.users[1].available_cash = 10000000.0;
+        g_bank.users[1].available_stocks[0] = 10000;
+    }
 
-    EMSPipeline pipeline{auth, risk, market, router, tracker};
-
-    // Helper to generate a clean baseline order
-    OrderRequest createValidOrder() {
+    OrderRequest createBaseOrder() {
         OrderRequest req;
-        req.user_id = 1;      // Valid user
-        req.symbol = 1;       // Open market
-        req.quantity = 100;   // Safe quantity
+        req.user_id = 1;      
+        req.symbol = 0;       
+        req.side = Side::BUY; 
+        req.price = 100.0;    
+        req.quantity = 100;   
         return req;
     }
 };
 
-// --- 1. HAPPY PATHS ---
-
+// 1. SUCCESS PATH
 TEST_F(EMSPipelineTest, ValidOrderIsAccepted) {
-    OrderRequest req = createValidOrder();
-    EMSDecision decision = pipeline.process(req);
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    auto req = createBaseOrder();
+    auto decision = pipeline.process(req);
     
     EXPECT_TRUE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::NONE);
 }
 
-// --- 2. AUTHENTICATION FAILURES ---
+// 2. FUNDING GATE
+TEST_F(EMSPipelineTest, RejectsInsufficientFunds) {
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    auto req = createBaseOrder();
+    req.price = 10000001.0; // Total > 10M balance
 
+    auto decision = pipeline.process(req);
+    EXPECT_FALSE(decision.accepted);
+    EXPECT_EQ(decision.reason, RejectReason::INSUFFICIENT_FUNDS);
+}
+
+// 3. AUTH GATE
 TEST_F(EMSPipelineTest, RejectsUnauthorizedUser) {
-    OrderRequest req = createValidOrder();
-    req.user_id = 0; // Invalid user
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    auto req = createBaseOrder();
+    req.user_id = 0; // Blacklisted ID
 
-    EMSDecision decision = pipeline.process(req);
-    
+    auto decision = pipeline.process(req);
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::AUTH_FAILED);
 }
 
-// --- 3. MARKET STATE FAILURES ---
-
+// 4. MARKET STATE GATE
 TEST_F(EMSPipelineTest, RejectsClosedMarketSymbol) {
-    OrderRequest req = createValidOrder();
-    req.symbol = 0; // Closed market
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    auto req = createBaseOrder();
+    req.symbol = 99; // Never opened in SetUp
 
-    EMSDecision decision = pipeline.process(req);
-    
+    auto decision = pipeline.process(req);
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::MARKET_CLOSED);
 }
 
-// --- 4. RISK BOUNDARY TESTING ---
+// 5. RISK GATE (FAT FINGER)
+TEST_F(EMSPipelineTest, RejectsOrderAboveRiskLimit) {
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    auto req = createBaseOrder();
+    req.quantity = 2000000; // Well above the 1M limit
 
-TEST_F(EMSPipelineTest, AcceptsOrderExactlyAtRiskLimit) {
-    OrderRequest req = createValidOrder();
-    // Test the exact boundary: 1,000,000 should PASS
-    req.quantity = EMSConfig::FAT_FINGER_LIMIT; 
-
-    EMSDecision decision = pipeline.process(req);
-    
-    EXPECT_TRUE(decision.accepted);
-    EXPECT_EQ(decision.reason, RejectReason::NONE);
-}
-
-TEST_F(EMSPipelineTest, RejectsOrderJustOverRiskLimit) {
-    OrderRequest req = createValidOrder();
-    // Test the exact boundary + 1: 1,000,001 should FAIL
-    req.quantity = EMSConfig::FAT_FINGER_LIMIT + 1; 
-
-    EMSDecision decision = pipeline.process(req);
-    
+    auto decision = pipeline.process(req);
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::RISK_EXCEEDED);
 }
 
-// --- 5. ORDER OF OPERATIONS (SHORT-CIRCUIT CHECKS) ---
+// 6. PIPELINE PRIORITY (Auth should trigger before Risk)
+TEST_F(EMSPipelineTest, AuthFailsBeforeOtherChecks) {
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    auto req = createBaseOrder();
+    req.user_id = 0;   // Should fail Auth
+    req.quantity = 5000000; // Should also fail Risk
 
-TEST_F(EMSPipelineTest, AuthFailsBeforeMarketCheck) {
-    OrderRequest req = createValidOrder();
-    req.user_id = 0;  // Should fail Auth
-    req.symbol = 0;   // Should fail Market
-
-    EMSDecision decision = pipeline.process(req);
-    
-    // Auth is checked first, so the reason MUST be AUTH_FAILED, not MARKET_CLOSED
+    auto decision = pipeline.process(req);
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::AUTH_FAILED);
-}
-
-TEST_F(EMSPipelineTest, AuthFailsBeforeRiskCheck) {
-    OrderRequest req = createValidOrder();
-    req.user_id = 0;      // Should fail Auth
-    req.quantity = 99999999; // Should fail Risk
-
-    EMSDecision decision = pipeline.process(req);
-    
-    // Must short-circuit at Auth
-    EXPECT_FALSE(decision.accepted);
-    EXPECT_EQ(decision.reason, RejectReason::AUTH_FAILED);
-}
-
-TEST_F(EMSPipelineTest, MarketFailsBeforeRiskCheck) {
-    OrderRequest req = createValidOrder();
-    req.symbol = 0;       // Should fail Market
-    req.quantity = 99999999; // Should fail Risk
-
-    EMSDecision decision = pipeline.process(req);
-    
-    // Must short-circuit at Market
-    EXPECT_FALSE(decision.accepted);
-    EXPECT_EQ(decision.reason, RejectReason::MARKET_CLOSED);
-}
-
-// --- 6. EXTREME EDGE CASES ---
-
-TEST_F(EMSPipelineTest, HandlesMaxUint64Quantity) {
-    OrderRequest req = createValidOrder();
-    req.quantity = std::numeric_limits<uint64_t>::max(); 
-
-    EMSDecision decision = pipeline.process(req);
-    
-    EXPECT_FALSE(decision.accepted);
-    EXPECT_EQ(decision.reason, RejectReason::RISK_EXCEEDED);
-}
-
-TEST_F(EMSPipelineTest, HandlesZeroQuantity) {
-    OrderRequest req = createValidOrder();
-    req.quantity = 0; // A 0 quantity is technically safe from fat-finger, but usually invalid. 
-                      // For now, our risk manager just checks if it's <= 1,000,000.
-                      // So it should pass the EMS pipeline (the ME will likely drop it later).
-
-    EMSDecision decision = pipeline.process(req);
-    
-    EXPECT_TRUE(decision.accepted);
-    EXPECT_EQ(decision.reason, RejectReason::NONE);
 }

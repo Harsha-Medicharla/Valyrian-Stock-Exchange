@@ -5,35 +5,25 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# --- COMMENTED OUT: Handled by Root CMakeLists.txt ---
-# include(FetchContent)
-# FetchContent_Declare(
-#   libart
-#   GIT_REPOSITORY https://github.com/armon/libart.git
-#   GIT_TAG master
-# )
-# FetchContent_GetProperties(libart)
-# if(NOT libart_POPULATED)
-#   FetchContent_MakeAvailable(libart)
-#   add_library(art STATIC "${libart_SOURCE_DIR}/src/art.c")
-#   target_include_directories(art PUBLIC "${libart_SOURCE_DIR}/src")
-#   target_compile_features(art PUBLIC c_std_99)
-# endif()
-# ----------------------------------------------------
-
-# Define the WAL library
+# --- Define the WAL library ---
 add_library(wal STATIC wal/WAL.cpp)
 
+# --- Set Include Directories ---
+# We use PUBLIC so that anything linking to 'wal' (like your tests) 
+# also knows where to find these headers.
 target_include_directories(
-  wal
-  PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
+    wal
+    PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    # This allows the engine to find SettlementModule.h
+    ${CMAKE_SOURCE_DIR}/Settlement/include 
 )
 
+# --- Link Dependencies ---
 target_link_libraries(
-  wal
-  PUBLIC
-  absl::flat_hash_map
-  art  # This 'art'
+    wal
+    PUBLIC
+    absl::flat_hash_map
+    art
 )

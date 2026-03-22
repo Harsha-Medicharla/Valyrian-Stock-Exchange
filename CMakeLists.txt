@@ -35,30 +35,52 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 enable_testing()
+include(GoogleTest)
 
 add_subdirectory(MatchingEngine)
 add_subdirectory(EMS)
+add_subdirectory(Settlement)
 
 # ---------------------------------------------------------
-# Integration Test (Gateway -> Dispatcher -> Engine)
+# Test 1: Pipeline Integration (integration_test.cc)
 # ---------------------------------------------------------
-add_executable(integration_test
+add_executable(pipeline_integration_test
     tests/integration_test.cc
 )
 
-target_include_directories(integration_test PRIVATE
+target_include_directories(pipeline_integration_test PRIVATE 
     ${CMAKE_SOURCE_DIR}
 )
 
-target_link_libraries(integration_test
+target_link_libraries(pipeline_integration_test
     PRIVATE
         ems
+        settlement
         GTest::gtest
         GTest::gtest_main
 )
 
 # ---------------------------------------------------------
-# Core Matching Engine Test (Zero-Allocation & WAL)
+# Test 2: EMS & Settlement Core (ems_settlement_integration_test.cc)
+# ---------------------------------------------------------
+add_executable(ems_settlement_test
+    tests/ems_settlement_integration_test.cc
+)
+
+target_include_directories(ems_settlement_test PRIVATE 
+    ${CMAKE_SOURCE_DIR}
+)
+
+target_link_libraries(ems_settlement_test
+    PRIVATE
+        ems
+        settlement
+        GTest::gtest
+        GTest::gtest_main
+)
+
+# ---------------------------------------------------------
+# Test 3: Matching Engine (matching_engine_test.cc)
 # ---------------------------------------------------------
 add_executable(matching_engine_test
     tests/matching_engine_test.cc
@@ -73,10 +95,12 @@ target_link_libraries(matching_engine_test
     PRIVATE
         wal
         art
+        settlement
         GTest::gtest
         GTest::gtest_main
 )
 
-include(GoogleTest)
-gtest_discover_tests(integration_test)
+# Discover all tests
+gtest_discover_tests(pipeline_integration_test)
+gtest_discover_tests(ems_settlement_test)
 gtest_discover_tests(matching_engine_test)

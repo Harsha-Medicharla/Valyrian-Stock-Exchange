@@ -5,15 +5,19 @@
 #include "ports/EgressPort.h"
 #include "../../MatchingEngine/include/MatchingEngine.h"
 #include "queue/RingBuffer.h"
+#include "SettlementModule.h" // 1. ADD THIS INCLUDE
 
 namespace EMS {
 
+// 2. Update constructor signature and initialize bank_
 EMSCore::EMSCore(size_t symbol_count, 
                  EMSPipeline& pipeline, 
-                 EgressPort& egress)
+                 EgressPort& egress,
+                 Settlement::SettlementModule& bank)
     : symbol_count_(symbol_count), 
       pipeline_(pipeline), 
-      egress_(egress) 
+      egress_(egress),
+      bank_(bank) // <-- Initialize the reference
 {
     engines_.reserve(symbol_count_);
     dispatchers_.reserve(symbol_count_);
@@ -21,7 +25,10 @@ EMSCore::EMSCore(size_t symbol_count,
 
     for (size_t i = 0; i < symbol_count_; ++i) {
         auto queue = std::make_unique<RingBuffer<model::OrderRequest, 1024>>();
-        auto engine = std::make_unique<MatchingEngine>(i);
+        
+        // 3. THE FINAL BOSS DEFEATED: Hand the bank to the engine
+        auto engine = std::make_unique<MatchingEngine>(i, bank_); 
+        
         auto dispatcher = std::make_unique<Dispatcher>(*queue, *engine);
 
         queues_.push_back(std::move(queue));
@@ -56,6 +63,13 @@ void EMSCore::stop() {
 void EMSCore::submit(const model::OrderRequest& request) {
     model::EMSDecision decision = pipeline_.process(request);
     egress_.forward(decision);
+    if (decision.accepted) {
+        size_t symbol_idx = static_cast<size_t>(request.symbol);
+        
+        if (symbol_idx < queues_.size()) {
+            queues_[symbol_idx]->push(request);
+        }
+    }
 }
 
 }

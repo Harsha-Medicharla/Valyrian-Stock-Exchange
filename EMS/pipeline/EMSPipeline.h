@@ -1,7 +1,7 @@
 #pragma once
-
 #include "../model/OrderRequest.h"
 #include "../model/EMSDecision.h"
+#include "SettlementModule.h" 
 
 namespace EMS {
 class AuthService;
@@ -16,17 +16,17 @@ public:
                 RiskManager& risk,
                 MarketState& market,
                 SymbolRouter& router,
-                EMSOrderTracker& tracker);
+                EMSOrderTracker& tracker,
+                Settlement::SettlementModule& settlement); 
 
     model::EMSDecision process(const model::OrderRequest& request);
 
 private:
-    // Core services injected via constructor
     AuthService& auth_;
     RiskManager& risk_;
     MarketState& market_;
     SymbolRouter& router_;
     EMSOrderTracker& tracker_;
+    Settlement::SettlementModule& settlement_; 
 };
-
 }

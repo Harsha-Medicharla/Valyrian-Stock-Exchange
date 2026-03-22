@@ -10,8 +10,9 @@ enum class RejectReason : uint8_t {
     MARKET_CLOSED,
     RISK_EXCEEDED,
     SELF_TRADE_BLOCKED,
-    SYSTEM_OVERLOAD
+    SYSTEM_OVERLOAD,
+    INSUFFICIENT_FUNDS
 };
 
-} // namespace model
-} // namespace EMS
+}
+}

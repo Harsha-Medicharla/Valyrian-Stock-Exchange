@@ -3,6 +3,7 @@
 #include "wal/WAL.h"
 #include <iostream>
 #include <vector>
+#include "SettlementModule.h" 
 
 class MatchingEngine
 {
@@ -11,12 +12,14 @@ private:
     TimeStamp time_stamp;
     WALSystem wal;
     bool is_recovering = false;
-    // OrderBook order_book;
+    
+    Settlement::SettlementModule& settlement; 
 
 public:
     OrderBook order_book;
-    MatchingEngine(Symbol symbol)
-        : symbol(symbol), time_stamp(0), wal("engine_" + std::to_string(symbol))
+    
+    MatchingEngine(Symbol symbol, Settlement::SettlementModule& settlement_module)
+        : symbol(symbol), time_stamp(0), wal("engine_" + std::to_string(symbol)), settlement(settlement_module)
     {
         is_recovering = true;
 
@@ -115,6 +118,8 @@ public:
             {
                 return false;
             }
+            settlement.releaseMargin(order->user_id, symbol, order->side, order->price, order->remaining);
+
             order_book.removeOrder(order);
             return true;
         }
@@ -156,6 +161,7 @@ public:
                 order->quantity -= reduction_qty;
                 order->remaining -= reduction_qty;
                 updateOrderState(order);
+                settlement.releaseMargin(order->user_id, symbol, order->side, order->price, reduction_qty);
 
                 if (order->state == OrderState::FILLED)
                 {
@@ -169,7 +175,7 @@ public:
                 Side side = order->side;
                 OrderType type = order->type;
 
-                onCancelOrder(order->order_id);
+                onCancelOrder(order->order_id); 
 
                 bool was_recovering = is_recovering;
                 is_recovering = true;
@@ -184,7 +190,6 @@ public:
         }
     }
 
-// private:
 public:
     void match(Order *incoming_order) noexcept
     {
@@ -223,6 +228,9 @@ public:
                         std::cerr << "[MatchingEngine] WAL Error in onCancelOrder: " << e.what() << std::endl;
                     }
                 }
+
+                settlement.releaseMargin(incoming_order->user_id, symbol, incoming_order->side, incoming_order->price, incoming_order->remaining);
+                
                 incoming_order->remaining = 0;
                 incoming_order->state = OrderState::CANCELLED;
                 break;
@@ -256,6 +264,13 @@ public:
                 std::cerr << "[MatchingEngine] WAL Error in executeTrade: " << e.what() << std::endl;
             }
         }
+
+        //actual movement of money
+        UserId buyer_id = (aggressor->side == Side::BUY) ? aggressor->user_id : resting_order->user_id;
+        UserId seller_id = (aggressor->side == Side::SELL) ? aggressor->user_id : resting_order->user_id;
+
+        settlement.settleTrade(buyer_id, seller_id, symbol, price, qty);
+
     }
 
     void updateOrderState(Order *order) noexcept
