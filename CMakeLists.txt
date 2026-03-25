@@ -40,6 +40,7 @@ include(GoogleTest)
 add_subdirectory(MatchingEngine)
 add_subdirectory(EMS)
 add_subdirectory(Settlement)
+add_subdirectory(Server)
 
 # ---------------------------------------------------------
 # Test 1: Pipeline Integration (integration_test.cc)
@@ -104,3 +105,24 @@ target_link_libraries(matching_engine_test
 gtest_discover_tests(pipeline_integration_test)
 gtest_discover_tests(ems_settlement_test)
 gtest_discover_tests(matching_engine_test)
+
+# ---------------------------------------------------------
+# Test 4: TCP Server Integration Tests
+# ---------------------------------------------------------
+add_executable(server_integration_test
+    tests/server_integration_test.cc
+)
+
+target_include_directories(server_integration_test PRIVATE
+    ${CMAKE_SOURCE_DIR}
+)
+
+target_link_libraries(server_integration_test
+    PRIVATE
+        server
+        ems
+        GTest::gtest
+        GTest::gtest_main
+)
+
+gtest_discover_tests(server_integration_test)
