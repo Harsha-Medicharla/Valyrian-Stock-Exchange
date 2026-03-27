@@ -10,8 +10,8 @@ struct alignas(64) ConnState
 {
     uint64_t user_id;
     uint64_t last_client_seq;
-    bool     is_active;
-    uint8_t  _pad[47];
+    bool is_active;
+    uint8_t _pad[47];
 };
 
 static_assert(sizeof(ConnState) == 64, "ConnState layout");

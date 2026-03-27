@@ -61,7 +61,7 @@ namespace
         const char *v = std::getenv(key);
         return (v && v[0]) ? v : fallback;
     }
-} // namespace
+}
 
 struct WsUserData
 {
@@ -184,7 +184,8 @@ void WebSocketServer::handleFlatBufferMessage(std::uint64_t user_id, std::uint32
 
     switch (req->body_type())
     {
-    case VSE::RequestBody_NewOrder: {
+    case VSE::RequestBody_NewOrder:
+    {
         const VSE::NewOrder *n = req->body_as_NewOrder();
         if (!n)
             return;
@@ -212,7 +213,8 @@ void WebSocketServer::handleFlatBufferMessage(std::uint64_t user_id, std::uint32
         (void)pushRawOrder(ro, worker_hint);
         break;
     }
-    case VSE::RequestBody_CancelOrder: {
+    case VSE::RequestBody_CancelOrder:
+    {
         const VSE::CancelOrder *c = req->body_as_CancelOrder();
         if (!c)
             return;
@@ -240,7 +242,8 @@ void WebSocketServer::handleFlatBufferMessage(std::uint64_t user_id, std::uint32
         (void)pushRawOrder(ro, worker_hint);
         break;
     }
-    case VSE::RequestBody_ModifyOrder: {
+    case VSE::RequestBody_ModifyOrder:
+    {
         const VSE::ModifyOrder *m = req->body_as_ModifyOrder();
         if (!m)
             return;
@@ -386,7 +389,8 @@ bool WebSocketServer::sendToConnection(std::uint32_t conn_id, std::string payloa
     if (!endpoint.loop || !endpoint.socket)
         return false;
 
-    endpoint.loop->defer([this, conn_id, endpoint, payload = std::move(payload)]() mutable {
+    endpoint.loop->defer([this, conn_id, endpoint, payload = std::move(payload)]() mutable
+                         {
         WsSocket *socket = nullptr;
         {
             std::lock_guard lock(endpointsMutex_);
@@ -398,8 +402,7 @@ bool WebSocketServer::sendToConnection(std::uint32_t conn_id, std::string payloa
                 return;
             socket = static_cast<WsSocket *>(current.socket);
         }
-        socket->send(payload, uWS::OpCode::BINARY);
-    });
+        socket->send(payload, uWS::OpCode::BINARY); });
 
     return true;
 }
@@ -417,7 +420,8 @@ void WebSocketServer::run()
 
     for (std::size_t i = 0; i < threadCount; ++i)
     {
-        ioThreads.emplace_back([this]() {
+        ioThreads.emplace_back([this]()
+                               {
             redisContext *redis = nullptr;
             if (redis_enabled_)
             {
@@ -506,8 +510,7 @@ void WebSocketServer::run()
                 .run();
 
             if (redis)
-                redisFree(redis);
-        });
+                redisFree(redis); });
     }
 
     for (auto &thread : ioThreads)
@@ -533,9 +536,8 @@ void WebSocketServer::stopCancelSubscriber() noexcept
 void WebSocketServer::startBalanceSyncSubscriber(BalanceCache &cache) noexcept
 {
     balanceSyncRunning_.store(true, std::memory_order_release);
-    balanceSyncThread_ = std::thread([this, &cache]() noexcept {
-        runBalanceSyncSubscriberImpl(cache);
-    });
+    balanceSyncThread_ = std::thread([this, &cache]() noexcept
+                                     { runBalanceSyncSubscriberImpl(cache); });
 }
 
 void WebSocketServer::stopBalanceSyncSubscriber() noexcept
@@ -623,9 +625,9 @@ void WebSocketServer::stop() noexcept
         us_listen_socket_t *listenSocket = i < listenSockets_.size() ? listenSockets_[i] : nullptr;
         if (!loop)
             continue;
-        loop->defer([loop, listenSocket]() {
+        loop->defer([loop, listenSocket]()
+                    {
             if (listenSocket)
-                us_listen_socket_close(0, listenSocket);
-        });
+                us_listen_socket_close(0, listenSocket); });
     }
 }

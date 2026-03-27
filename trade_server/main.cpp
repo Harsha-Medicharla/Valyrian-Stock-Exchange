@@ -82,7 +82,7 @@ namespace
         const std::string coreMap = Json::writeString(writer, cfg["core_pinning"]);
         setenv("VSE_CORE_MAP_JSON", coreMap.c_str(), 1);
     }
-} // namespace
+}
 
 int main()
 {

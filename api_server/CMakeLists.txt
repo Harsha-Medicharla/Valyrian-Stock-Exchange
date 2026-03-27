@@ -5,12 +5,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads REQUIRED)
 
-# 1. Find PostgreSQL BEFORE Drogon loads so its configuration scripts can see it natively
 find_package(PostgreSQL REQUIRED)
 
 include(FetchContent)
 
-# 2. Keep Drogon features we don't need turned OFF, but force ORM ON for database support
 set(BUILD_CTL      OFF CACHE BOOL "" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_ORM      ON  CACHE BOOL "" FORCE)
@@ -44,14 +42,12 @@ target_link_libraries(api_server_app PRIVATE
     jsoncpp_static
 )
 
-# 3. Explicitly append the PostgreSQL include paths so Drogon can find libpq-fe.h anywhere
 target_include_directories(api_server_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}
   ${PostgreSQL_INCLUDE_DIRS}
 )
 
-# Pass the header directory directly into the global compiler flags for third-party sub-builds
 include_directories(${PostgreSQL_INCLUDE_DIRS})
 
 target_compile_options(api_server_app PRIVATE -O2 -pthread)

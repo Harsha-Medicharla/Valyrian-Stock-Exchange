@@ -93,18 +93,24 @@ inline Decision ValidationPipeline::process(const RawOrder *o, RejectReason &r)
 
 inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noexcept
 {
-    if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
 
     if (o->symbol_id >= marketState_.symbolCount())
         return false;
 
-    if (o->type == static_cast<uint8_t>(OrderType::LIMIT)) {
+    if (o->type == static_cast<uint8_t>(OrderType::LIMIT))
+    {
         if (o->price < EMSConfig::MIN_PRICE || o->price > EMSConfig::MAX_PRICE)
             return false;
-    } else if (o->type == static_cast<uint8_t>(OrderType::MARKET)) {
+    }
+    else if (o->type == static_cast<uint8_t>(OrderType::MARKET))
+    {
         if (o->price != 0)
             return false;
-    } else {
+    }
+    else
+    {
         return false;
     }
 
@@ -119,9 +125,11 @@ inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noex
 
 inline bool ValidationPipeline::checkFatFingerNotional(const RawOrder *o) const noexcept
 {
-    if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
-    if (o->type == static_cast<uint8_t>(OrderType::MARKET)) return true;
-    
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
+    if (o->type == static_cast<uint8_t>(OrderType::MARKET))
+        return true;
+
     const int64_t notional = o->price * static_cast<int64_t>(o->qty);
     return notional <= EMSConfig::FAT_FINGER_LIMIT;
 }
@@ -138,9 +146,11 @@ inline bool ValidationPipeline::checkRateLimit(const RawOrder *o) noexcept
 
 inline bool ValidationPipeline::checkTickSize(const RawOrder *o) const noexcept
 {
-    if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
-    if (o->type == static_cast<uint8_t>(OrderType::MARKET)) return true;
-    
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
+    if (o->type == static_cast<uint8_t>(OrderType::MARKET))
+        return true;
+
     return symbolCache_.isValidTick(o->symbol_id, o->price);
 }
 
@@ -151,7 +161,8 @@ inline bool ValidationPipeline::checkLotSize(const RawOrder *o) const noexcept
 
 inline bool ValidationPipeline::checkBalance(const RawOrder *o) noexcept
 {
-    if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
 
     if (o->side == 0)
     {

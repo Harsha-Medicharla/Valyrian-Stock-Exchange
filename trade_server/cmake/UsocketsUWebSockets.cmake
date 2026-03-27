@@ -1,4 +1,4 @@
-# Fetches and builds uSockets (C) + header-only uWebSockets (C++). No OpenSSL.
+# Fetches and builds uSockets (C) + header-only uWebSockets (C++)
 
 if(TARGET uwebsockets_vse)
   return()
@@ -35,7 +35,6 @@ FetchContent_MakeAvailable(zlib_fc)
 
 set(USOCK_SRC_DIR "${usockets_fc_SOURCE_DIR}/src")
 
-# Paths may contain '[' (e.g. mp[3]); CMake file(GLOB) treats '[' as a glob metacharacter.
 function(vse_glob_c out_var glob_dir)
   execute_process(
     COMMAND python3 -c "import glob,sys; from glob import escape; b=sys.argv[1]; print('\\n'.join(glob.glob(escape(b)+'/*.c')))" "${glob_dir}"

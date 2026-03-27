@@ -96,18 +96,16 @@ void AccountController::deposit(const drogon::HttpRequestPtr &req,
     try
     {
         const auto db = PGPool::client();
-        // 1. Persist directly to PostgreSQL database
         db->execSqlSync(
             "INSERT INTO balances (user_id, available, blocked) VALUES ($1, $2, 0) "
             "ON CONFLICT (user_id) DO UPDATE SET available = balances.available + $2",
             *userId, amount);
 
-        // 2. Publish balance synchronization payload to Redis to inform the engine layers
         Json::Value balanceSync(Json::objectValue);
         balanceSync["type"] = "Deposit";
         balanceSync["user_id"] = Json::UInt64(*userId);
         balanceSync["amount"] = Json::Int64(amount);
-        
+
         Json::StreamWriterBuilder writer;
         writer["indentation"] = "";
         RedisPool::instance().publish("vse:balances:sync", Json::writeString(writer, balanceSync));
@@ -152,7 +150,6 @@ void AccountController::depositHoldings(
     {
         const auto db = PGPool::client();
 
-        // Verify the symbol exists
         const auto symResult = db->execSqlSync(
             "SELECT symbol_id FROM symbols WHERE symbol_id=$1 AND is_active=true",
             symbolId);
@@ -164,13 +161,11 @@ void AccountController::depositHoldings(
             return;
         }
 
-        // Ensure a balances row exists (required by holdings FK)
         db->execSqlSync(
             "INSERT INTO balances (user_id, available, blocked) VALUES ($1, 0, 0) "
             "ON CONFLICT (user_id) DO NOTHING",
             *userId);
 
-        // Upsert holdings
         db->execSqlSync(
             "INSERT INTO holdings (user_id, symbol_id, available_qty, blocked_qty) "
             "VALUES ($1, $2, $3, 0) "
@@ -178,7 +173,6 @@ void AccountController::depositHoldings(
             "SET available_qty = holdings.available_qty + $3",
             *userId, symbolId, qty);
 
-        // Publish to trade_server so BalanceCache is updated immediately
         Json::Value sync(Json::objectValue);
         sync["type"] = "DepositHoldings";
         sync["user_id"] = Json::UInt64(*userId);

@@ -16,5 +16,5 @@ enum class RejectReason : uint8_t
     RATE_LIMIT,
     INVALID_TICK,
     INVALID_LOT,
-    INSUFFICIENT_FUNDS   // balance check failed
+    INSUFFICIENT_FUNDS
 };

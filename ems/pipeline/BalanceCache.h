@@ -5,9 +5,6 @@
 #include "../config/EMSConfig.h"
 #include "../../shared/types/CoreTypes.h"
 
-// In-memory balances (per user) and holdings (per user × symbol).
-// Hot path: IngressWorker CAS loops; DBWriter calls settle/unblock (single writer).
-
 struct alignas(64) BalanceEntry
 {
     std::atomic<int64_t> available{0};
@@ -137,31 +134,31 @@ public:
         if (amount <= 0)
             return;
         BalanceEntry &be = balances_[static_cast<std::size_t>(userId) % kMaxUsers];
-        
+
         int64_t current_blocked = be.blocked.load(std::memory_order_relaxed);
         int64_t actual_to_sub;
-        
-        while (true) {
-            // Recalculate safely inside the loop iteration
-            if (current_blocked < amount) {
+
+        while (true)
+        {
+            if (current_blocked < amount)
+            {
                 actual_to_sub = current_blocked;
-            } else {
+            }
+            else
+            {
                 actual_to_sub = amount;
             }
-            
-            // This transaction ONLY succeeds if no other thread changed 'blocked' in the background
+
             if (be.blocked.compare_exchange_weak(
-                    current_blocked, 
-                    current_blocked - actual_to_sub, 
-                    std::memory_order_release, 
-                    std::memory_order_relaxed)) 
+                    current_blocked,
+                    current_blocked - actual_to_sub,
+                    std::memory_order_release,
+                    std::memory_order_relaxed))
             {
-                break; // Success! State updated safely without ever dropping below 0
+                break;
             }
-            // If it fails, 'current_blocked' automatically reloads with the new state, and we retry safely
         }
-        
-        // Add the exactly matched and subtracted amount back to available balance
+
         be.available.fetch_add(actual_to_sub, std::memory_order_release);
     }
 

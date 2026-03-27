@@ -1,4 +1,3 @@
--- Seed symbols so the exchange has instruments to trade
 INSERT INTO symbols (ticker, company_name, tick_size, lot_size, is_active) VALUES
     ('AAPL', 'Apple Inc',       1, 1, true),
     ('GOOG', 'Alphabet Inc',    1, 1, true),

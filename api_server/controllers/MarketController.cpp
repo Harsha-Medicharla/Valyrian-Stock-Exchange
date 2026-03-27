@@ -4,17 +4,17 @@
 
 namespace
 {
-Json::Value symbolRowToJson(const drogon::orm::Row &row)
-{
-    Json::Value item(Json::objectValue);
-    item["symbol_id"] = row["symbol_id"].as<uint32_t>();
-    item["ticker"] = row["ticker"].as<std::string>();
-    item["company_name"] = row["company_name"].as<std::string>();
-    item["tick_size"] = Json::Int64(row["tick_size"].as<int64_t>());
-    item["lot_size"] = row["lot_size"].as<uint32_t>();
-    return item;
+    Json::Value symbolRowToJson(const drogon::orm::Row &row)
+    {
+        Json::Value item(Json::objectValue);
+        item["symbol_id"] = row["symbol_id"].as<uint32_t>();
+        item["ticker"] = row["ticker"].as<std::string>();
+        item["company_name"] = row["company_name"].as<std::string>();
+        item["tick_size"] = Json::Int64(row["tick_size"].as<int64_t>());
+        item["lot_size"] = row["lot_size"].as<uint32_t>();
+        return item;
+    }
 }
-} // namespace
 
 void MarketController::listSymbols(const drogon::HttpRequestPtr &,
                                    std::function<void(const drogon::HttpResponsePtr &)> &&callback)
@@ -68,11 +68,12 @@ void MarketController::getTrades(const drogon::HttpRequestPtr &req,
                                  std::function<void(const drogon::HttpResponsePtr &)> &&callback,
                                  std::string ticker)
 {
-    try {
+    try
+    {
         const auto db = PGPool::client();
-        // Resolve ticker string (e.g. "AAPL") to symbol_id integer
         const auto symRes = db->execSqlSync("SELECT symbol_id FROM symbols WHERE ticker=$1", ticker);
-        if (symRes.empty()) {
+        if (symRes.empty())
+        {
             auto resp = drogon::HttpResponse::newHttpResponse();
             resp->setStatusCode(drogon::k404NotFound);
             callback(resp);
@@ -80,12 +81,12 @@ void MarketController::getTrades(const drogon::HttpRequestPtr &req,
         }
         const uint32_t symbolId = symRes[0]["symbol_id"].as<uint32_t>();
 
-        // Query historical entries safely using the ID
         const auto result = db->execSqlSync(
             "SELECT price, qty, timestamp FROM trades WHERE symbol_id=$1 ORDER BY timestamp DESC", symbolId);
 
         Json::Value arr(Json::arrayValue);
-        for (const auto &row : result) {
+        for (const auto &row : result)
+        {
             Json::Value trade;
             trade["price"] = row["price"].as<int64_t>();
             trade["qty"] = row["qty"].as<int32_t>();
@@ -94,7 +95,9 @@ void MarketController::getTrades(const drogon::HttpRequestPtr &req,
         }
         auto resp = drogon::HttpResponse::newHttpJsonResponse(arr);
         callback(resp);
-    } catch (...) {
+    }
+    catch (...)
+    {
         auto resp = drogon::HttpResponse::newHttpResponse();
         resp->setStatusCode(drogon::k500InternalServerError);
         callback(resp);

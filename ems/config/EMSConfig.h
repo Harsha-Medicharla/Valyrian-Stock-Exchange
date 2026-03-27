@@ -2,16 +2,12 @@
 #include <cstddef>
 #include <cstdint>
 
-// Single compile-time configuration for the EMS hot path and sizing.
 namespace EMSConfig
 {
-    // Fixed capacity for lock-free per-user counters in RateLimiter.
     inline constexpr std::size_t MAX_USERS = 1u << 17;
 
-    // Notional (price × quantity) must not exceed this limit (fat-finger protection).
     inline constexpr int64_t FAT_FINGER_LIMIT = 1'000'000'000'000LL;
 
-    // Approximate per-user cap used by RateLimiter (decayed periodically by workers).
     inline constexpr uint64_t MAX_ORDERS_PER_SEC = 100'000;
 
     inline constexpr int64_t TICK_SIZE = 1;
