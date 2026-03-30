@@ -3,6 +3,8 @@
 
 struct alignas(64) RawOrder
 {
+    // Server-assigned sequence for strict dispatch ordering.
+    uint64_t sequence;
     uint64_t order_id;
     uint32_t user_id;
     uint32_t symbol_id;
