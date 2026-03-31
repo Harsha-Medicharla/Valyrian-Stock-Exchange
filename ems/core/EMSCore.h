@@ -4,7 +4,7 @@
 #include "../config/EMSConfig.h"
 #include "../queues/SPSCQueueWrapper.h"
 #include "../queues/MPSCRingBuffer.h"
-#include "../queues/SequenceStateBuffer.h"
+#include "../queues/RejectionBitset.h"
 #include "IngressWorker.h"
 #include "Dispatcher.h"
 #include "../routing/SymbolRouter.h"
@@ -21,9 +21,9 @@ private:
     RateLimiter rateLimiter_;
     std::vector<std::unique_ptr<IngressWorker>> workers_;
     std::vector<MPSCRingBuffer> ringBuffers_;
-    std::vector<std::unique_ptr<SequenceStateBuffer>> rejectedStateBuffers_;
+    std::vector<std::unique_ptr<RejectionBitset>> rejectedStateBuffers_;
     std::vector<std::unique_ptr<MatchingEngine>> engines_;
-    std::vector<std::unique_ptr<Dispatcher>> dispatchers_;  
+    std::vector<std::unique_ptr<Dispatcher>> dispatchers_;
     SymbolRouter router_;
     MarketState marketState_;
 
@@ -31,15 +31,15 @@ public:
     EMSCore(size_t numWorkers, size_t numSymbols)
         : numWorkers_(numWorkers),
           numSymbols_(numSymbols),
-          router_(numSymbols),
-          marketState_(numSymbols),
           spscQueues_(),
           rateLimiter_(),
+          workers_(),
           ringBuffers_(),
           rejectedStateBuffers_(),
-          workers_(),
           engines_(),
-          dispatchers_()
+          dispatchers_(),
+          router_(numSymbols),
+          marketState_(numSymbols)
     {
         spscQueues_.reserve(numWorkers_);
         for (size_t i = 0; i < numWorkers_; ++i)
@@ -52,7 +52,7 @@ public:
         for (size_t i = 0; i < numSymbols_; ++i)
         {
             ringBuffers_.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
-            rejectedStateBuffers_.push_back(std::make_unique<SequenceStateBuffer>());
+            rejectedStateBuffers_.push_back(std::make_unique<RejectionBitset>());
         }
 
         engines_.reserve(numSymbols_);
@@ -97,14 +97,14 @@ public:
     {
         for (auto &w : workers_)
             w->stop();
+        for (auto &w : workers_)
+            w->join();
         for (auto &d : dispatchers_)
             d->stop();
     }
 
     void join()
     {
-        for (auto &w : workers_)
-            w->join();
         for (auto &d : dispatchers_)
             d->join();
     }

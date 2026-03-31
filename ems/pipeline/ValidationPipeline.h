@@ -22,8 +22,6 @@ public:
     ValidationPipeline(RateLimiter &rl, MarketState &ms);
 
     Decision process(const RawOrder *order, RejectReason &reason);
-
-    void decay() noexcept;
 };
 
 inline ValidationPipeline::ValidationPipeline(RateLimiter &rl, MarketState &ms)
@@ -79,16 +77,8 @@ inline Decision ValidationPipeline::process(const RawOrder *o, RejectReason &r)
     return Decision::ACCEPT;
 }
 
-inline void ValidationPipeline::decay() noexcept
-{
-    rateLimiter_.decay();
-}
-
 inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noexcept
 {
-    if (!o)
-        return false;
-
     if (o->symbol_id >= marketState_.symbolCount())
         return false;
 
@@ -107,9 +97,6 @@ inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noex
 
 inline bool ValidationPipeline::checkFatFingerNotional(const RawOrder *o) const noexcept
 {
-    if (!o)
-        return false;
-
     const int64_t notional = o->price * static_cast<int64_t>(o->qty);
     return notional <= EMSConfig::FAT_FINGER_LIMIT;
 }

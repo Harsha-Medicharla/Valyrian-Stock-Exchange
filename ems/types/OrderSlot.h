@@ -6,7 +6,6 @@ enum class OrderSlotState : uint8_t
 {
     Pending = 0,
     Valid = 1,
-    Rejected = 2,
 };
 
 struct alignas(64) OrderSlot
@@ -24,6 +23,4 @@ struct alignas(64) OrderSlot
 
     uint8_t side;
     uint8_t type;
-
-    OrderSlotState state = OrderSlotState::Pending;
 };
