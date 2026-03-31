@@ -31,7 +31,6 @@ private:
     SymbolRouter &router_;
     std::vector<MPSCRingBuffer> &ringBuffers_;
     std::vector<std::unique_ptr<RejectionBitset>> &rejectedStateBuffers_;
-    std::vector<EventSPSC<DBEvent>> &dbQueues_;
     EventSPSC<OrderEvent> *rejectQueue_;
     std::size_t workerIdx_;
     std::thread thread_;
@@ -69,7 +68,7 @@ private:
                     else
                     {
                         MPSCRingBuffer &rb = ringBuffers_[idx];
-                        uint64_t ringSeq = 0;
+                        uint64_t ringSeq = slot->sequence;
                         OrderSlot *out = rb.claimSlot(ringSeq);
                         out->sequence = slot->sequence;
                         out->order_id = slot->order_id;
@@ -83,26 +82,6 @@ private:
                         out->cancel_flag = slot->cancel_flag;
                         out->modify_flag = slot->modify_flag;
                         rb.publish(ringSeq);
-
-                        if (slot->cancel_flag == 0 && slot->modify_flag == 0 && idx < dbQueues_.size())
-                        {
-                            DBEvent de{};
-                            de.wal_sequence = static_cast<SeqNo>(slot->sequence);
-                            de.type = DBEventType::ORDER_ACCEPTED;
-                            de.side = static_cast<Side>(slot->side);
-                            de.order_type = static_cast<OrderType>(slot->type);
-                            de.state = OrderState::NEW;
-                            de.order_id = slot->order_id;
-                            de.user_id = static_cast<UserId>(slot->user_id);
-                            de.symbol_id = slot->symbol_id;
-                            de.price = slot->price;
-                            de.qty = static_cast<Qty>(slot->qty);
-                            de.remaining = static_cast<Qty>(slot->qty);
-                            de.timestamp = slot->timestamp;
-                            de.peer_order_id = 0;
-                            de.peer_user_id = 0;
-                            (void)dbQueues_[idx].tryPush(de);
-                        }
                     }
 
                     queue_.releaseSlot();
@@ -126,7 +105,6 @@ public:
         SymbolRouter &router,
         std::vector<MPSCRingBuffer> &ringBuffers,
         std::vector<std::unique_ptr<RejectionBitset>> &rejectedStateBuffers,
-        std::vector<EventSPSC<DBEvent>> &dbQueues,
         EventSPSC<OrderEvent> *rejectQueue,
         std::size_t workerIdx,
         MarketState &marketState) noexcept
@@ -136,7 +114,6 @@ public:
           router_(router),
           ringBuffers_(ringBuffers),
           rejectedStateBuffers_(rejectedStateBuffers),
-          dbQueues_(dbQueues),
           rejectQueue_(rejectQueue),
           workerIdx_(workerIdx),
           thread_(),

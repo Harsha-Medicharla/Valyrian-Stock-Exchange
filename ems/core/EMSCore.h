@@ -39,7 +39,6 @@ private:
         std::vector<EventSPSC<OrderEvent>> orderQueues;
         std::vector<EventSPSC<TradeEvent>> tradeQueues;
         std::vector<EventSPSC<BookUpdateEvent>> bookUpdateQueues;
-        std::vector<EventSPSC<DBEvent>> ingressDbQueues;
         std::vector<EventSPSC<DBEvent>> engineDbQueues;
     } eventBus_;
 
@@ -81,14 +80,12 @@ public:
         eventBus_.orderQueues.reserve(numSymbols_);
         eventBus_.tradeQueues.reserve(numSymbols_);
         eventBus_.bookUpdateQueues.reserve(numSymbols_);
-        eventBus_.ingressDbQueues.reserve(numSymbols_);
         eventBus_.engineDbQueues.reserve(numSymbols_);
         for (size_t i = 0; i < numSymbols_; ++i)
         {
             eventBus_.orderQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
             eventBus_.tradeQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
             eventBus_.bookUpdateQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
-            eventBus_.ingressDbQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
             eventBus_.engineDbQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
         }
 
@@ -121,7 +118,6 @@ public:
                 router_,
                 ringBuffers_,
                 rejectedStateBuffers_,
-                eventBus_.ingressDbQueues,
                 &rejectOrderQueues_[i],
                 i,
                 marketState_));
@@ -149,11 +145,6 @@ public:
         return eventBus_.tradeQueues[symbolIdx];
     }
 
-    [[nodiscard]] EventSPSC<DBEvent> &ingressDbQueue(size_t symbolIdx) noexcept
-    {
-        return eventBus_.ingressDbQueues[symbolIdx];
-    }
-
     [[nodiscard]] EventSPSC<DBEvent> &engineDbQueue(size_t symbolIdx) noexcept
     {
         return eventBus_.engineDbQueues[symbolIdx];
@@ -174,11 +165,6 @@ public:
     [[nodiscard]] std::vector<EventSPSC<BookUpdateEvent>> &bookUpdateQueues() noexcept
     {
         return eventBus_.bookUpdateQueues;
-    }
-
-    [[nodiscard]] std::vector<EventSPSC<DBEvent>> &ingressDbQueues() noexcept
-    {
-        return eventBus_.ingressDbQueues;
     }
 
     [[nodiscard]] std::vector<EventSPSC<DBEvent>> &engineDbQueues() noexcept

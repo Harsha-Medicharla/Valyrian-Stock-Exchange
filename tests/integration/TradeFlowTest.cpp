@@ -136,7 +136,7 @@ TEST_F(TradingSystemTest, PipelineAcceptsMatchesAndSettles)
     ems.balanceCache().setBalance(2, 10000, 0);
 
     MockPGWriter mockWriter;
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
+    DBWriter dbWriter(ems.engineDbQueues(), std::vector<uint32_t>{0},
                       ems.balanceCache(), mockWriter);
     MarketDataPublisher marketData(ems.tradeQueues(), ems.bookUpdateQueues(),
                                    1, 0);
@@ -186,7 +186,7 @@ TEST_F(TradingSystemTest, DeterministicBookSweep)
     ems.balanceCache().setBalance(2, 100000, 0);
 
     MockPGWriter mockWriter;
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
+    DBWriter dbWriter(ems.engineDbQueues(), std::vector<uint32_t>{0},
                       ems.balanceCache(), mockWriter);
     ems.start();
     dbWriter.start();
@@ -229,7 +229,7 @@ TEST_F(TradingSystemTest, RejectsOrdersWithoutSufficientFunds)
     ems.balanceCache().setBalance(1, 50, 0);
 
     MockPGWriter mockWriter;
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
+    DBWriter dbWriter(ems.engineDbQueues(), std::vector<uint32_t>{0},
                       ems.balanceCache(), mockWriter);
     ems.start();
     dbWriter.start();
@@ -258,7 +258,7 @@ TEST_F(TradingSystemTest, SelfTradePreventionCancelsRestingOrder)
     ems.balanceCache().setBalance(1, 10000, 0);
 
     MockPGWriter mockWriter;
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
+    DBWriter dbWriter(ems.engineDbQueues(), std::vector<uint32_t>{0},
                       ems.balanceCache(), mockWriter);
     ems.start();
     dbWriter.start();
@@ -287,7 +287,7 @@ TEST_F(TradingSystemTest, CancelOrderReleasesBlockedFunds)
     ems.balanceCache().setBalance(1, 5000, 0);
 
     MockPGWriter mockWriter;
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
+    DBWriter dbWriter(ems.engineDbQueues(), std::vector<uint32_t>{0},
                       ems.balanceCache(), mockWriter);
     ems.start();
     dbWriter.start();
@@ -319,7 +319,7 @@ TEST_F(TradingSystemTest, PriceTimePriorityBookSweep)
     ems.balanceCache().setBalance(3, 100000, 0);
 
     MockPGWriter mockWriter;
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
+    DBWriter dbWriter(ems.engineDbQueues(), std::vector<uint32_t>{0},
                       ems.balanceCache(), mockWriter);
     ems.start();
     dbWriter.start();
@@ -370,8 +370,8 @@ TEST_F(TradingSystemTest, CrashAndRecoveryDeterminism)
     recoveredEms.balanceCache().setHoldings(1, 0, 50, 50);
     recoveredEms.balanceCache().setBalance(2, 5000, 0);
 
-    DBWriter dbWriter(recoveredEms.ingressDbQueues(), recoveredEms.engineDbQueues(),
-                      1, recoveredEms.balanceCache(), mockWriter);
+    DBWriter dbWriter(recoveredEms.engineDbQueues(), std::vector<uint32_t>{0},
+                      recoveredEms.balanceCache(), mockWriter);
     recoveredEms.start();
     dbWriter.start();
 
@@ -399,7 +399,7 @@ TEST_F(TradingSystemTest, HighThroughputDeterminismNoDataLoss)
     ems.balanceCache().setBalance(2, 100000000, 0);
 
     MockPGWriter mockWriter;
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
+    DBWriter dbWriter(ems.engineDbQueues(), std::vector<uint32_t>{0},
                       ems.balanceCache(), mockWriter);
     ems.start();
     dbWriter.start();
@@ -482,11 +482,9 @@ TEST(DBWriterModuleTest, QueueHandling)
         void writeBatch(const std::vector<DBEvent> &) override {}
     };
     NullBackend backend;
-    std::vector<EventSPSC<DBEvent>> inQ;
-    inQ.emplace_back(128);
     std::vector<EventSPSC<DBEvent>> enQ;
     enQ.emplace_back(128);
-    DBWriter writer(inQ, enQ, 1, bc, backend);
+    DBWriter writer(enQ, std::vector<uint32_t>{0}, bc, backend);
     SUCCEED();
 }
 

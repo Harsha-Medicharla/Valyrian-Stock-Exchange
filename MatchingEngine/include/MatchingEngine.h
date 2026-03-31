@@ -40,6 +40,8 @@ private:
     void pushFillOrderEvent(const Order *o, Price fill_price, Qty fill_qty,
                             Qty remaining_after, OrderState st, TimeStamp action_ts) noexcept;
 
+    void pushDbAccept(const Order *o, TimeStamp action_ts) noexcept;
+
     void pushCancelAck(OrderId oid, UserId uid, OrderState st, Qty rem, TimeStamp action_ts) noexcept;
 
     void pushModifyAck(OrderId oid, UserId uid, OrderType ty, Side sd, Price px, Qty qty,
@@ -136,6 +138,7 @@ else if (entry.action == WalAction::TRADE)
             // uncomment if needed
             // auto start = std::chrono::high_resolution_clock::now();
 
+            pushDbAccept(order, action_ts);
             match(order, action_ts);
             updateOrderState(order);
 
@@ -402,6 +405,28 @@ inline void MatchingEngine::pushBookUpdate(TimeStamp action_ts) noexcept
     ev.best_ask = order_book_.bestAskPrice();
     ev.timestamp = action_ts;
     (void)bookUpdateQueue_->tryPush(ev);
+}
+
+inline void MatchingEngine::pushDbAccept(const Order *o, TimeStamp action_ts) noexcept
+{
+    if (!dbQueue_ || isRecovering_ || inModify_)
+        return;
+    DBEvent de{};
+    de.wal_sequence = static_cast<SeqNo>(wal.lastSequence());
+    de.type = DBEventType::ORDER_ACCEPTED;
+    de.side = o->side;
+    de.order_type = o->type;
+    de.state = OrderState::NEW;
+    de.order_id = o->order_id;
+    de.user_id = o->user_id;
+    de.symbol_id = symbolId_;
+    de.price = o->price;
+    de.qty = o->quantity;
+    de.remaining = o->quantity;
+    de.timestamp = action_ts;
+    de.peer_order_id = 0;
+    de.peer_user_id = 0;
+    (void)dbQueue_->tryPush(de);
 }
 
 inline void MatchingEngine::emitPostTradeEvents(Order *incoming_order, const Order &resting_snap,
