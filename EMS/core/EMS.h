@@ -1,43 +1,59 @@
 #pragma once
+
 #include <vector>
 #include <memory>
 #include <atomic>
-#include "../model/OrderRequest.h"
+#include <cstddef>
+#include "EMS/model/OrderRequest.h"
 
-// 1. Forward declare the Settlement Module
-namespace Settlement { class SettlementModule; }
+// Forward declaration for global Settlement class
+class Settlement;
 
+// Forward declarations for EMS-specific components
 namespace EMS {
-    // NO INCLUDES for internal components here!
     class IngressWorker;
     class EMSPipeline;
     class Dispatcher;
     class EgressPort;
 }
+
+// Forward declarations for external dependencies
 class MatchingEngine;
 template<typename T, size_t Size> class RingBuffer;
 
 namespace EMS {
-    class EMSCore {
-    public:
-        // 2. Add the bank to the constructor
-        EMSCore(size_t symbol_count, EMSPipeline& pipeline, EgressPort& egress, Settlement::SettlementModule& bank);
-        
-        void start();
-        void stop();
-        void submit(const model::OrderRequest& request);
-    private:
-        size_t symbol_count_;
-        EMSPipeline& pipeline_;
-        EgressPort& egress_;
-        
-        // 3. Store a reference to the global bank
-        Settlement::SettlementModule& bank_; 
 
-        std::vector<std::unique_ptr<RingBuffer<model::OrderRequest, 1024>>> queues_;
-        std::vector<std::unique_ptr<MatchingEngine>> engines_;
-        std::vector<std::unique_ptr<Dispatcher>> dispatchers_;
-        std::vector<std::unique_ptr<IngressWorker>> ingress_workers_;
-        std::atomic<size_t> next_worker_{0};
-    };
-}
+class EMSCore {
+public:
+    /**
+     * @brief Constructs the core Execution Management System.
+     * @param symbol_count Number of trading symbols to manage.
+     * @param pipeline Reference to the order validation pipeline.
+     * @param egress Reference to the output port.
+     * @param bank Reference to the global Settlement module.
+     */
+    EMSCore(size_t symbol_count, 
+            EMS::EMSPipeline& pipeline, 
+            EMS::EgressPort& egress, 
+            ::Settlement& bank);
+    
+    void start();
+    void stop();
+    void submit(const model::OrderRequest& request);
+
+private:
+    size_t symbol_count_;
+    EMS::EMSPipeline& pipeline_;
+    EMS::EgressPort& egress_;
+    ::Settlement& bank_; 
+
+    // Internal components using full namespacing/paths
+    std::vector<std::unique_ptr<RingBuffer<model::OrderRequest, 1024>>> queues_;
+    std::vector<std::unique_ptr<MatchingEngine>> engines_;
+    std::vector<std::unique_ptr<Dispatcher>> dispatchers_;
+    std::vector<std::unique_ptr<IngressWorker>> ingress_workers_;
+    
+    std::atomic<size_t> next_worker_{0};
+};
+
+} // namespace EMS

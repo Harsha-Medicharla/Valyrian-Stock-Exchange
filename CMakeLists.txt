@@ -8,7 +8,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
 # ---------------------------------------------------------
-# Adaptive Radix Tree (ART)
+# 1. Global Include Path (Fixes the "No such file" errors)
+# ---------------------------------------------------------
+# This allows all modules to use #include "Settlement/..." or #include "EMS/..."
+include_directories(${CMAKE_SOURCE_DIR})
+
+# ---------------------------------------------------------
+# 2. Dependencies (PostgreSQL, libpqxx, and Threads)
+# ---------------------------------------------------------
+find_package(Threads REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED libpqxx)
+
+include_directories(${PQXX_INCLUDE_DIRS})
+link_directories(${PQXX_LIBRARY_DIRS})
+
+# ---------------------------------------------------------
+# 3. Adaptive Radix Tree (ART)
 # ---------------------------------------------------------
 set(ART_SRC_DIR "${CMAKE_SOURCE_DIR}/MatchingEngine/libs/art/src")
 
@@ -17,7 +33,7 @@ target_include_directories(art PUBLIC "${ART_SRC_DIR}")
 target_compile_features(art PUBLIC c_std_99)
 
 # ---------------------------------------------------------
-# External Dependencies (Abseil & GoogleTest)
+# 4. External Dependencies (Abseil & GoogleTest)
 # ---------------------------------------------------------
 FetchContent_Declare(
   absl
@@ -37,6 +53,9 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 include(GoogleTest)
 
+# ---------------------------------------------------------
+# 5. Project Subdirectories
+# ---------------------------------------------------------
 add_subdirectory(MatchingEngine)
 add_subdirectory(EMS)
 add_subdirectory(Settlement)
@@ -55,9 +74,12 @@ target_include_directories(pipeline_integration_test PRIVATE
 target_link_libraries(pipeline_integration_test
     PRIVATE
         ems
-        settlement
+        settlement_lib
         GTest::gtest
         GTest::gtest_main
+        Threads::Threads
+        ${PQXX_LIBRARIES}
+        pq
 )
 
 # ---------------------------------------------------------
@@ -74,9 +96,12 @@ target_include_directories(ems_settlement_test PRIVATE
 target_link_libraries(ems_settlement_test
     PRIVATE
         ems
-        settlement
+        settlement_lib
         GTest::gtest
         GTest::gtest_main
+        Threads::Threads
+        ${PQXX_LIBRARIES}
+        pq
 )
 
 # ---------------------------------------------------------
@@ -95,9 +120,12 @@ target_link_libraries(matching_engine_test
     PRIVATE
         wal
         art
-        settlement
+        settlement_lib
         GTest::gtest
         GTest::gtest_main
+        Threads::Threads
+        ${PQXX_LIBRARIES}
+        pq
 )
 
 # Discover all tests

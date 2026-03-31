@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
-#include "MatchingEngine.h"
-#include "SettlementModule.h"
-static Settlement::SettlementModule global_bank;
+#include "MatchingEngine/include/MatchingEngine.h"
+#include "Settlement/core/Settlement.h"
+
+// REMOVE the Pool<Trade> and Pool<Confirmation> lines.
+// Just use this one line for the bank:
+static ::Settlement global_bank(nullptr, nullptr);
 
 static std::string walPath(int id) {
     return "test_wal_" + std::to_string(id);
