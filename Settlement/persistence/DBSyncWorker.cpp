@@ -1,32 +1,22 @@
-#include "DBSyncWorker.h"
+#include "Settlement/persistence/DBSyncWorker.h"
 #include <iostream>
 
-void DBSyncWorker::enqueueForPersistence(const Trade* trade) {
-    bool should_flush = false;
-    
-    // Create a local scope for the lock so it unlocks BEFORE calling flush
-    {
-        std::lock_guard<std::mutex> lock(queue_mutex);
-        pending_trades.push_back(*trade); 
-        
-        if (pending_trades.size() >= 1000) {
-            should_flush = true;
-        }
-    } // <-- Mutex automatically unlocks right here!
+namespace SettlementCore {
 
-    // Now it's safe to call flush, which has its own lock
-    if (should_flush) {
-        flushToDatabase();
+void DBSyncWorker::persist(uint64_t buyer, uint64_t seller, uint64_t symbol, int64_t price, int32_t qty) {
+    try {
+        // Log the attempt (optional, good for debugging server logs)
+        // std::cout << "[DBSyncWorker] Persisting trade for symbol: " << symbol << std::endl;
+
+        // Call the underlying SQL writer
+        pgWriter.writeTrade(buyer, seller, symbol, price, qty);
+        
+    } catch (const std::exception& e) {
+        // CRITICAL: On a server, we log errors to stderr so they show up in system logs
+        std::cerr << "[DBSyncWorker] DATABASE ERROR: " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "[DBSyncWorker] Unknown error occurred during DB sync." << std::endl;
     }
 }
 
-void DBSyncWorker::flushToDatabase() {
-    std::lock_guard<std::mutex> lock(queue_mutex);
-    if (pending_trades.empty()) return;
-
-    // Send the batch to the Postgres writer
-    pgWriter.executeBatch(pending_trades);
-    
-    // Clear the queue for the next batch
-    pending_trades.clear();
-}
+} // namespace SettlementCore

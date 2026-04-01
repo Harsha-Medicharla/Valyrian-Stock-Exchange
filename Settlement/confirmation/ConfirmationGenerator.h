@@ -1,13 +1,20 @@
-// confirmation/ConfirmationGenerator.h
 #pragma once
-#include "../entities/Trade.h"
-#include "../entities/Confirmation.h"
-#include "../common/SettlementConstants.h"
-#include <cstring>
+#include <iostream>
+#include <cstdint>
+#include <string>
 
-template <typename T> class Pool;
+namespace SettlementCore {
 
 class ConfirmationGenerator {
 public:
-    void generateAndPush(const Trade* trade, int32_t buy_rem, int32_t sell_rem, Pool<Confirmation>* q5);
+    // We make this static so Settlement.h can call it without an instance
+    static void generate(uint64_t buyer, uint64_t seller, uint64_t symbol, int64_t price, int32_t qty) {
+        std::cout << "[CONFIRMATION] Trade Executed | Symbol: " << symbol 
+                  << " | Price: " << (price / 100.0) 
+                  << " | Qty: " << qty 
+                  << " | Buyer: " << buyer 
+                  << " | Seller: " << seller << std::endl;
+    }
 };
+
+} // namespace SettlementCore

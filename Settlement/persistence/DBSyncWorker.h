@@ -1,17 +1,19 @@
-// persistence/DBSyncWorker.h
 #pragma once
-#include "../entities/Trade.h"
-#include "PostgresWriter.h"
-#include <vector>
-#include <mutex>
+#include "Settlement/persistence/PostgresWriter.h"
+#include <cstdint>
+
+namespace SettlementCore {
 
 class DBSyncWorker {
 public:
-    void enqueueForPersistence(const Trade* trade);
-    void flushToDatabase(); // Run by background thread
+    DBSyncWorker() = default;
+
+    // The primary entry point for the background thread
+    void persist(uint64_t buyer, uint64_t seller, uint64_t symbol, int64_t price, int32_t qty);
 
 private:
-    std::vector<Trade> pending_trades;
-    std::mutex queue_mutex;
+    // This holds the actual database connection logic
     PostgresWriter pgWriter;
 };
+
+} // namespace SettlementCore
