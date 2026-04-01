@@ -13,10 +13,10 @@ public:
             hash *= 16777619;
         };
         hash_combine(trade->trade_id);
-        hash_combine(trade->buy_user_id);
-        hash_combine(trade->sell_user_id);
-        hash_combine(trade->exec_price);
-        hash_combine(trade->exec_qty);
+        hash_combine(trade->buyer_id);
+        hash_combine(trade->seller_id);
+        hash_combine(trade->price);
+        hash_combine(trade->qty);
         return hash;
     }
 };

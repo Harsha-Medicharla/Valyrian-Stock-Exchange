@@ -1,45 +1,37 @@
-#include "Settlement.h"
-#include "../common/Pool.h"
+#include "Settlement/core/Settlement.h"
+#include "Settlement/entities/Trade.h"
+#include <iostream>
+
+namespace SettlementCore { // <-- Added this to match the header
 
 void Settlement::processQueue() {
-    Trade* trade = nullptr;
+    if (!q4_trades) return;
     
-    // 1. Read Trade from Q4
-    while (q4_trade_pool->pop(trade)) {
-        
-        // 2. Validate trade integrity
-        if (!validator.isValid(trade)) {
-            trade = validator.recoverFromWAL(trade->trade_id);
-            if (!trade) continue; 
-        }
+    // Future Part 2 implementation logic will go here
+}
 
-        uint64_t total_trade_value = trade->exec_price * trade->exec_qty;
+void Settlement::settleTrade(uint64_t buyer_id, uint64_t seller_id, uint64_t symbol, int64_t price, int32_t qty) {
+    int64_t total_value = price * qty;
+    
+    fund_manager.transferFunds(buyer_id, seller_id, total_value);
+    
+    std::cout << "[SETTLEMENT] Transferred " << total_value 
+              << " from Buyer " << buyer_id << " to Seller " << seller_id << "\n";
+}
 
-        // 3 & 4. Process Buyer
-        fundManager.processBuyer(trade->buy_user_id, total_trade_value);
+bool Settlement::reserveMargin(uint64_t user_id, uint64_t symbol, uint8_t side, int64_t price, int32_t qty) {
+    if (side == 0) { // BUY side requires cash
+        int64_t total_cost = price * qty;
+        return fund_manager.reserveFunds(user_id, total_cost);
+    }
+    return true; // SELL side logic pending ShareManager
+}
 
-        // 5 & 6. Process Seller Shares
-        shareManager.transferShares(trade->sell_user_id, trade->buy_user_id, 
-                                    trade->symbol, trade->exec_qty);
-
-        // 7. Process Seller Cash
-        fundManager.processSeller(trade->sell_user_id, total_trade_value);
-
-        // 8. Update Symbol Market Data
-        symbolUpdater.updateMarketData(trade->symbol, trade->exec_price, trade->exec_qty);
-
-        // 9. Handle partial fill leftovers
-        int32_t buy_remaining = trade->buy_total_qty - trade->exec_qty;
-        int32_t sell_remaining = trade->sell_total_qty - trade->exec_qty;
-        partialFillHandler.process(trade, buy_remaining, sell_remaining);
-
-        // 10. Generate confirmations + Push Q5
-        confGenerator.generateAndPush(trade, buy_remaining, sell_remaining, q5_conf_pool);
-
-        // 12. Async persist to DB
-        dbSyncWorker.enqueueForPersistence(trade);
-
-        // Final Step: Deallocate
-        q4_trade_pool->deallocate(trade);
+void Settlement::releaseMargin(uint64_t user_id, uint64_t symbol, uint8_t side, int64_t price, int32_t qty) {
+    if (side == 0) {
+        int64_t amount = price * qty;
+        fund_manager.releaseFunds(user_id, amount);
     }
 }
+
+} // namespace SettlementCore // <-- Closed it here

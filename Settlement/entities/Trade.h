@@ -1,18 +1,16 @@
-// entities/Trade.h
-#pragma once
+#ifndef TRADE_H
+#define TRADE_H
+
 #include <cstdint>
 
 struct Trade {
-    uint64_t  trade_id;
-    uint64_t  buy_order_id;
-    uint64_t  sell_order_id;
-    uint64_t  buy_user_id;
-    uint64_t  sell_user_id;
-    char      symbol[8];
-    int64_t   exec_price;       // in paise
-    int32_t   exec_qty;
-    int32_t   buy_total_qty;
-    int32_t   sell_total_qty;
-    uint64_t  timestamp;
-    uint32_t  checksum;
+    uint64_t trade_id;
+    uint64_t buyer_id;
+    uint64_t seller_id;
+    uint64_t symbol;
+    int64_t price;
+    int32_t qty;
+    uint64_t checksum; 
 };
+
+#endif

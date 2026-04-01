@@ -17,22 +17,15 @@ static RiskManager     g_risk;
 static MarketState     g_market;
 static SymbolRouter    g_router;
 static EMSOrderTracker g_tracker;
-
-// Initializing with nullptr for the memory pools (Q4/Q5) for now.
-static ::Settlement    g_bank(nullptr, nullptr);
+static SettlementCore::Settlement    g_bank;
 
 class EMSPipelineIntegrationTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        // Reset state before every single test
-        g_market.openSymbol(0);
-
-        // Note: Direct access to g_bank.users has been removed.
-        // In Part 1, the reserveMargin stub in Settlement.h returns true.
-        // Once you implement the FundManager in Part 2, we will add 
-        // a helper method to Settlement to seed test funds.
-    }
-
+void SetUp() override {
+    g_market.openSymbol(0);
+    // Give User 1 some money so the reserveMargin check passes!
+    g_bank.adminDeposit(1, 100000000); 
+}
     OrderRequest createBaseOrder() {
         OrderRequest req;
         req.user_id = 1;      

@@ -14,12 +14,12 @@ private:
     TimeStamp time_stamp;
     WALSystem wal;
     bool is_recovering = false;
-    ::Settlement& settlement; 
+    SettlementCore::Settlement& settlement; 
 
 public:
     OrderBook order_book;
     
-    MatchingEngine(Symbol symbol, ::Settlement& settlement_module)
+    MatchingEngine(Symbol symbol, SettlementCore::Settlement& settlement_module)
         : symbol(symbol), time_stamp(0), wal("engine_" + std::to_string(symbol)), settlement(settlement_module)
     {
         is_recovering = true;

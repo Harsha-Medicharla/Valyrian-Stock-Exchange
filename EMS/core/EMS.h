@@ -7,7 +7,9 @@
 #include "EMS/model/OrderRequest.h"
 
 // Forward declaration for global Settlement class
-class Settlement;
+namespace SettlementCore {
+    class Settlement;
+}
 
 // Forward declarations for EMS-specific components
 namespace EMS {
@@ -35,7 +37,7 @@ public:
     EMSCore(size_t symbol_count, 
             EMS::EMSPipeline& pipeline, 
             EMS::EgressPort& egress, 
-            ::Settlement& bank);
+            SettlementCore::Settlement& bank);
     
     void start();
     void stop();
@@ -45,7 +47,7 @@ private:
     size_t symbol_count_;
     EMS::EMSPipeline& pipeline_;
     EMS::EgressPort& egress_;
-    ::Settlement& bank_; 
+    SettlementCore::Settlement& bank_;
 
     // Internal components using full namespacing/paths
     std::vector<std::unique_ptr<RingBuffer<model::OrderRequest, 1024>>> queues_;

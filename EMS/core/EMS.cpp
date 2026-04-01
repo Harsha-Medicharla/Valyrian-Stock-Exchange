@@ -11,7 +11,7 @@ namespace EMS {
 EMSCore::EMSCore(size_t symbol_count, 
                  EMSPipeline& pipeline, 
                  EgressPort& egress, 
-                 ::Settlement& bank)
+                 SettlementCore::Settlement& bank)
     : symbol_count_(symbol_count), 
       pipeline_(pipeline), 
       egress_(egress), 

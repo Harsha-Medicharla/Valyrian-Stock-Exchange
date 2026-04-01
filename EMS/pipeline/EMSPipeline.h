@@ -17,7 +17,7 @@ public:
                 MarketState& market,
                 SymbolRouter& router,
                 EMSOrderTracker& tracker,
-                ::Settlement& settlement);
+                SettlementCore::Settlement& settlement);
 
     model::EMSDecision process(const model::OrderRequest& request);
 
@@ -27,6 +27,6 @@ private:
     MarketState& market_;
     SymbolRouter& router_;
     EMSOrderTracker& tracker_;
-    ::Settlement& settlement_; 
+    SettlementCore::Settlement& settlement_;
 };
 }

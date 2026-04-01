@@ -4,7 +4,7 @@
 
 // REMOVE the Pool<Trade> and Pool<Confirmation> lines.
 // Just use this one line for the bank:
-static ::Settlement global_bank(nullptr, nullptr);
+static SettlementCore::Settlement global_bank;
 
 static std::string walPath(int id) {
     return "test_wal_" + std::to_string(id);
@@ -958,9 +958,10 @@ What this test PROVES
 ✔ WAL replay is deterministic
 */
 TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
+    std::remove("engine_28.wal");
     {
         MatchingEngine *engine = new MatchingEngine(28,global_bank);
-
+        
         // ADD BUY
         engine->onNewOrder(
             1,          // order_id

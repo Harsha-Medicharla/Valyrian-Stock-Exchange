@@ -16,7 +16,7 @@ EMSPipeline::EMSPipeline(AuthService& auth,
                          MarketState& market,
                          SymbolRouter& router,
                          EMSOrderTracker& tracker,
-                         ::Settlement& settlement)
+                         SettlementCore::Settlement& settlement)
     : auth_(auth), risk_(risk), market_(market), router_(router), tracker_(tracker), settlement_(settlement) {}
 
 EMS::model::EMSDecision EMSPipeline::process(const EMS::model::OrderRequest& request) {
