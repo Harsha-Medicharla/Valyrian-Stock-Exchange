@@ -1,0 +1,607 @@
+{
+  "tests": 51,
+  "failures": 4,
+  "disabled": 0,
+  "errors": 0,
+  "timestamp": "2026-03-31T07:15:20Z",
+  "time": "0.001s",
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "FullSystemCheck\/EMSPipelineTest",
+      "tests": 51,
+      "failures": 4,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-03-31T07:15:20Z",
+      "time": "0.001s",
+      "testsuite": [
+        {
+          "name": "ValidatesOrderScenarios\/0",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 7B-00 00-00 00-00 00-00 64-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0C-00 00-00 00-00 00-00 53-74 61-6E 64-61 72-64 20-42 75-79 00-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/1",
+          "value_param": "56-byte object <38-00 00-00 70-5F 00-00 C8-01 00-00 00-00 00-00 F4-01 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-74 61-6E 64-61 72-64 20-53 65-6C 6C-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/2",
+          "value_param": "56-byte object <00-00 00-00 70-5F 00-00 7B-00 00-00 00-00 00-00 64-00 00-00 00-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 42-61 6E-6E 65-64 20-55 73-65 72-20 30-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest",
+          "failures": [
+            {
+              "failure": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc:49\nExpected equality of these values:\n  decision.accepted\n    Which is: true\n  param.expected_accepted\n    Which is: false\nFailed Case: Banned User 0\n",
+              "type": ""
+            }
+          ]
+        },
+        {
+          "name": "ValidatesOrderScenarios\/3",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 7B-00 00-00 00-00 00-00 80-84 1E-00 00-45 00-00 40-0F 6D-E1 75-5F 00-00 13-00 00-00 00-00 00-00 13-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest",
+          "failures": [
+            {
+              "failure": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc:49\nExpected equality of these values:\n  decision.accepted\n    Which is: true\n  param.expected_accepted\n    Which is: false\nFailed Case: Fat Finger Quantity\n",
+              "type": ""
+            }
+          ]
+        },
+        {
+          "name": "ValidatesOrderScenarios\/4",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 7B-00 00-00 00-00 00-00 40-4B 4C-00 00-45 00-00 40-0F 6D-E1 75-5F 00-00 12-00 00-00 00-00 00-00 12-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest",
+          "failures": [
+            {
+              "failure": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc:49\nExpected equality of these values:\n  decision.accepted\n    Which is: true\n  param.expected_accepted\n    Which is: false\nFailed Case: Extreme Risk Block\n",
+              "type": ""
+            }
+          ]
+        },
+        {
+          "name": "ValidatesOrderScenarios\/5",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 00-00 00-00 00-00 00-00 64-00 00-00 00-45 00-00 40-0F 6D-E1 75-5F 00-00 15-00 00-00 00-00 00-00 15-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest",
+          "failures": [
+            {
+              "failure": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc:49\nExpected equality of these values:\n  decision.accepted\n    Which is: true\n  param.expected_accepted\n    Which is: false\nFailed Case: Invalid\/Closed Symbol\n",
+              "type": ""
+            }
+          ]
+        },
+        {
+          "name": "ValidatesOrderScenarios\/6",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 01-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/7",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 02-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/8",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 03-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/9",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 04-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 34-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/10",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 05-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 35-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/11",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 06-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 36-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/12",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 07-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 37-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/13",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 08-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 38-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/14",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 09-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0D-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 39-00 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/15",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 0A-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-30 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/16",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 0B-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-31 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/17",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 0C-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-32 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/18",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 0D-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-33 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/19",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 0E-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-34 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/20",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 0F-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-35 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/21",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 10-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-36 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/22",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 11-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-37 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/23",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 12-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-38 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/24",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 13-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 31-39 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/25",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 14-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-30 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/26",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 15-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-31 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/27",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 16-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-32 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/28",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 17-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-33 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/29",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 18-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-34 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/30",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 19-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-35 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/31",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 1A-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-36 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/32",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 1B-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-37 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/33",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 1C-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-38 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/34",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 1D-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 32-39 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/35",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 1E-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-30 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/36",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 1F-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-31 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/37",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 20-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-32 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/38",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 21-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-33 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/39",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 22-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-34 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/40",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 23-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-35 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/41",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 24-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-36 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/42",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 25-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-37 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/43",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 26-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-38 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/44",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 27-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 33-39 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/45",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 28-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 34-30 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/46",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 29-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 34-31 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/47",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 2A-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 34-32 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/48",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 2B-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 34-33 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/49",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 2C-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 34-34 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        },
+        {
+          "name": "ValidatesOrderScenarios\/50",
+          "value_param": "56-byte object <37-00 00-00 70-5F 00-00 2D-00 00-00 00-00 00-00 0A-00 00-00 01-45 00-00 08-0E 6D-E1 75-5F 00-00 0E-00 00-00 00-00 00-00 53-6D 61-6C 6C-20 54-72 61-64 65-20 34-35 00-00>",
+          "file": "\/home\/chris\/Valyrian-Stock-Exchange\/tests\/integration_test.cc",
+          "line": 38,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-03-31T07:15:20Z",
+          "time": "0s",
+          "classname": "FullSystemCheck\/EMSPipelineTest"
+        }
+      ]
+    }
+  ]
+}

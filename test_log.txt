@@ -1,0 +1,149 @@
+[==========] Running 51 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 51 tests from FullSystemCheck/EMSPipelineTest
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/0
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/0 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/1
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/1 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/2
+/home/chris/Valyrian-Stock-Exchange/tests/integration_test.cc:49: Failure
+Expected equality of these values:
+  decision.accepted
+    Which is: true
+  param.expected_accepted
+    Which is: false
+Failed Case: Banned User 0
+
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/2, where GetParam() = 56-byte object <00-00 00-00 BD-61 00-00 7B-00 00-00 00-00 00-00 64-00 00-00 00-45 00-00 08-BE 65-E4 BB-61 00-00 0D-00 00-00 00-00 00-00 42-61 6E-6E 65-64 20-55 73-65 72-20 30-00 00-00> (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/3
+/home/chris/Valyrian-Stock-Exchange/tests/integration_test.cc:49: Failure
+Expected equality of these values:
+  decision.accepted
+    Which is: true
+  param.expected_accepted
+    Which is: false
+Failed Case: Fat Finger Quantity
+
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/3, where GetParam() = 56-byte object <37-00 00-00 BD-61 00-00 7B-00 00-00 00-00 00-00 80-84 1E-00 00-45 00-00 40-BF 65-E4 BB-61 00-00 13-00 00-00 00-00 00-00 13-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00> (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/4
+/home/chris/Valyrian-Stock-Exchange/tests/integration_test.cc:49: Failure
+Expected equality of these values:
+  decision.accepted
+    Which is: true
+  param.expected_accepted
+    Which is: false
+Failed Case: Extreme Risk Block
+
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/4, where GetParam() = 56-byte object <37-00 00-00 BD-61 00-00 7B-00 00-00 00-00 00-00 40-4B 4C-00 00-45 00-00 40-BF 65-E4 BB-61 00-00 12-00 00-00 00-00 00-00 12-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00> (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/5
+/home/chris/Valyrian-Stock-Exchange/tests/integration_test.cc:49: Failure
+Expected equality of these values:
+  decision.accepted
+    Which is: true
+  param.expected_accepted
+    Which is: false
+Failed Case: Invalid/Closed Symbol
+
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/5, where GetParam() = 56-byte object <37-00 00-00 BD-61 00-00 00-00 00-00 00-00 00-00 64-00 00-00 00-45 00-00 40-BF 65-E4 BB-61 00-00 15-00 00-00 00-00 00-00 15-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00> (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/6
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/6 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/7
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/7 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/8
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/8 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/9
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/9 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/10
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/10 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/11
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/11 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/12
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/12 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/13
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/13 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/14
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/14 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/15
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/15 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/16
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/16 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/17
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/17 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/18
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/18 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/19
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/19 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/20
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/20 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/21
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/21 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/22
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/22 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/23
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/23 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/24
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/24 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/25
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/25 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/26
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/26 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/27
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/27 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/28
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/28 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/29
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/29 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/30
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/30 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/31
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/31 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/32
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/32 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/33
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/33 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/34
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/34 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/35
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/35 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/36
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/36 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/37
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/37 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/38
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/38 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/39
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/39 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/40
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/40 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/41
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/41 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/42
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/42 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/43
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/43 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/44
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/44 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/45
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/45 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/46
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/46 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/47
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/47 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/48
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/48 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/49
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/49 (0 ms)
+[ RUN      ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/50
+[       OK ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/50 (0 ms)
+[----------] 51 tests from FullSystemCheck/EMSPipelineTest (27 ms total)
+
+[----------] Global test environment tear-down
+[==========] 51 tests from 1 test suite ran. (30 ms total)
+[  PASSED  ] 47 tests.
+[  FAILED  ] 4 tests, listed below:
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/2, where GetParam() = 56-byte object <00-00 00-00 BD-61 00-00 7B-00 00-00 00-00 00-00 64-00 00-00 00-45 00-00 08-BE 65-E4 BB-61 00-00 0D-00 00-00 00-00 00-00 42-61 6E-6E 65-64 20-55 73-65 72-20 30-00 00-00>
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/3, where GetParam() = 56-byte object <37-00 00-00 BD-61 00-00 7B-00 00-00 00-00 00-00 80-84 1E-00 00-45 00-00 40-BF 65-E4 BB-61 00-00 13-00 00-00 00-00 00-00 13-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00>
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/4, where GetParam() = 56-byte object <37-00 00-00 BD-61 00-00 7B-00 00-00 00-00 00-00 40-4B 4C-00 00-45 00-00 40-BF 65-E4 BB-61 00-00 12-00 00-00 00-00 00-00 12-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00>
+[  FAILED  ] FullSystemCheck/EMSPipelineTest.ValidatesOrderScenarios/5, where GetParam() = 56-byte object <37-00 00-00 BD-61 00-00 00-00 00-00 00-00 00-00 64-00 00-00 00-45 00-00 40-BF 65-E4 BB-61 00-00 15-00 00-00 00-00 00-00 15-00 00-00 00-00 00-00 73-65 72-20 30-00 00-00>
+
+ 4 FAILED TESTS
