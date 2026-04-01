@@ -1,7 +1,7 @@
 #pragma once
 #include "../model/OrderRequest.h"
 #include "../model/EMSDecision.h"
-#include "SettlementModule.h" 
+#include "Settlement/core/Settlement.h"
 
 namespace EMS {
 class AuthService;
@@ -17,7 +17,7 @@ public:
                 MarketState& market,
                 SymbolRouter& router,
                 EMSOrderTracker& tracker,
-                Settlement::SettlementModule& settlement); 
+                SettlementCore::Settlement& settlement);
 
     model::EMSDecision process(const model::OrderRequest& request);
 
@@ -27,6 +27,6 @@ private:
     MarketState& market_;
     SymbolRouter& router_;
     EMSOrderTracker& tracker_;
-    Settlement::SettlementModule& settlement_; 
+    SettlementCore::Settlement& settlement_;
 };
 }

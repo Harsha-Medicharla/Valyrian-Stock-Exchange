@@ -9,15 +9,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(wal STATIC wal/WAL.cpp)
 
 # --- Set Include Directories ---
-# We use PUBLIC so that anything linking to 'wal' (like your tests) 
-# also knows where to find these headers.
 target_include_directories(
     wal
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    # This allows the engine to find SettlementModule.h
-    ${CMAKE_SOURCE_DIR}/Settlement/include 
+    ${CMAKE_SOURCE_DIR} # FIXED: Use global root path instead of specific include folder
 )
 
 # --- Link Dependencies ---

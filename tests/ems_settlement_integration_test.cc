@@ -1,133 +1,162 @@
 #include <gtest/gtest.h>
 #include <memory>
-#include "pipeline/EMSPipeline.h"
-#include "auth/AuthService.h"
-#include "risk/RiskManager.h"
-#include "market/MarketState.h"
-#include "routing/SymbolRouter.h"
-#include "tracker/EMSOrderTracker.h"
-#include "model/OrderRequest.h"
-#include "model/EMSDecision.h"
-#include "core/EMSConfig.h" 
-#include "SettlementModule.h"
+#include "EMS/pipeline/EMSPipeline.h"
+#include "EMS/auth/AuthService.h"
+#include "EMS/risk/RiskManager.h"
+#include "EMS/market/MarketState.h"
+#include "EMS/routing/SymbolRouter.h"
+#include "EMS/tracker/EMSOrderTracker.h"
+#include "EMS/model/OrderRequest.h"
+#include "EMS/model/EMSDecision.h"
+#include "EMS/core/EMSConfig.h" 
+#include "Settlement/core/Settlement.h"
 
 using namespace EMS;
 using namespace EMS::model;
 
-// Static globals ensure memory alignment and persist across the test process
-// avoiding the stack-overflow "Illegal Instruction" issues.
-static AuthService    g_auth;
-static RiskManager    g_risk;
-static MarketState    g_market;
-static SymbolRouter   g_router;
-static EMSOrderTracker g_tracker;
-static Settlement::SettlementModule g_bank;
-
 class EMSPipelineTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        // Reset Market
-        g_market.openSymbol(0);
+    // Members are fresh for every single TEST_F execution
+    AuthService                 auth;
+    RiskManager                 risk;
+    MarketState                 market;
+    SymbolRouter                router;
+    EMSOrderTracker             tracker;
+    SettlementCore::Settlement  bank;
+    
+    std::unique_ptr<EMSPipeline> pipeline;
 
-        // HARD RESET the bank for User 1
-        // We give them $1 Billion to ensure the Settlement gate 
-        // stays open during high-quantity Risk tests.
-        g_bank.users[1].available_cash = 1'000'000'000.0;
-        g_bank.users[1].available_stocks[0] = 10'000'000; 
+    void SetUp() override {
+        // Open symbol 0 for trading
+        market.openSymbol(0);
+        
+        // Seed User 1 with cash (100 million cents/units)
+        bank.adminDeposit(1, 100000000); 
+
+        // Initialize the pipeline with dependencies
+        pipeline = std::make_unique<EMSPipeline>(auth, risk, market, router, tracker, bank);
     }
+
+    // TearDown is handled automatically; the Settlement destructor 
+    // will join the background thread safely.
 
     OrderRequest createBaseOrder() {
         OrderRequest req;
         req.user_id = 1;      
         req.symbol = 0;       
         req.side = Side::BUY; 
-        req.price = 100.0;    
+        req.price = 100;      
         req.quantity = 100;   
         return req;
     }
 };
 
-// --- 1. SUCCESS PATH ---
-TEST_F(EMSPipelineTest, ValidOrderIsAccepted) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+// --- 1. SUCCESS PATHS ---
+
+TEST_F(EMSPipelineTest, ValidBuyOrderIsAccepted) {
     auto req = createBaseOrder();
-    auto decision = pipeline.process(req);
+    auto decision = pipeline->process(req);
     
     EXPECT_TRUE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::NONE);
 }
 
-// --- 2. MARGIN FAILURES ---
-TEST_F(EMSPipelineTest, RejectsInsufficientFunds) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+TEST_F(EMSPipelineTest, AcceptsSellWithSufficientShares) {
+    // Give User 1 some shares of Symbol 0
+    bank.adminDepositShares(1, 0, 1000); 
+    
     auto req = createBaseOrder();
-    // Total cost $2 Billion (User only has $1 Billion)
-    req.price = 2000.0; 
-    req.quantity = 1'000'000;
+    req.side = Side::SELL;
+    req.quantity = 500;
+    
+    auto decision = pipeline->process(req);
+    
+    EXPECT_TRUE(decision.accepted);
+    EXPECT_EQ(decision.reason, RejectReason::NONE);
+}
 
-    auto decision = pipeline.process(req);
+// --- 2. MARGIN & INVENTORY FAILURES ---
+
+TEST_F(EMSPipelineTest, RejectsInsufficientFunds) {
+    auto req = createBaseOrder();
+    
+    // Total cost exceeds the 100M deposit
+    req.price = 10000; 
+    req.quantity = 1000000;
+
+    auto decision = pipeline->process(req);
     
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::INSUFFICIENT_FUNDS);
 }
 
-// --- 3. AUTHENTICATION FAILURES ---
-TEST_F(EMSPipelineTest, RejectsUnauthorizedUser) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+TEST_F(EMSPipelineTest, RejectsNakedShortSell) {
     auto req = createBaseOrder();
-    req.user_id = 0; // Blacklisted
+    req.side = Side::SELL;
+    req.quantity = 1; // User has 0 shares of Symbol 0 initially
+    
+    auto decision = pipeline->process(req);
+    
+    EXPECT_FALSE(decision.accepted);
+    EXPECT_EQ(decision.reason, RejectReason::INSUFFICIENT_SHARES); 
+}
 
-    auto decision = pipeline.process(req);
+// --- 3. AUTHENTICATION FAILURES ---
+
+TEST_F(EMSPipelineTest, RejectsUnauthorizedUser) {
+    auto req = createBaseOrder();
+    req.user_id = 0; // Blacklisted ID
+
+    auto decision = pipeline->process(req);
     
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::AUTH_FAILED);
 }
 
 // --- 4. MARKET STATE FAILURES ---
-TEST_F(EMSPipelineTest, RejectsClosedMarketSymbol) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
-    auto req = createBaseOrder();
-    req.symbol = 99; // Closed
 
-    auto decision = pipeline.process(req);
+TEST_F(EMSPipelineTest, RejectsClosedMarketSymbol) {
+    auto req = createBaseOrder();
+    req.symbol = 99; // Symbol 99 was never opened
+
+    auto decision = pipeline->process(req);
     
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::MARKET_CLOSED);
 }
 
 // --- 5. RISK BOUNDARY TESTING ---
+
 TEST_F(EMSPipelineTest, AcceptsOrderExactlyAtRiskLimit) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
     auto req = createBaseOrder();
     req.quantity = EMSConfig::FAT_FINGER_LIMIT; 
-    // Price at 100.0 means cost is $100M. User has $1B. This should PASS.
 
-    auto decision = pipeline.process(req);
+    auto decision = pipeline->process(req);
     
     EXPECT_TRUE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::NONE);
 }
 
 TEST_F(EMSPipelineTest, RejectsOrderJustOverRiskLimit) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
     auto req = createBaseOrder();
     req.quantity = EMSConfig::FAT_FINGER_LIMIT + 1; 
 
-    auto decision = pipeline.process(req);
+    auto decision = pipeline->process(req);
     
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::RISK_EXCEEDED);
 }
 
-// --- 6. SHORT-CIRCUIT LOGIC ---
-TEST_F(EMSPipelineTest, AuthFailsBeforeMarginCheck) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
-    auto req = createBaseOrder();
-    req.user_id = 0;      // Fail Gate 1
-    req.price = 1e12;     // Would fail Gate 4
+// --- 6. SHORT-CIRCUIT & LOGIC ---
 
-    auto decision = pipeline.process(req);
+TEST_F(EMSPipelineTest, AuthFailsBeforeMarginCheck) {
+    auto req = createBaseOrder();
+    req.user_id = 0;      // Fails Gate 1
+    req.price = 1e12;     // Would fail Gate 4 (Margin)
+
+    auto decision = pipeline->process(req);
     
+    // Logic should stop at Auth failure
     EXPECT_FALSE(decision.accepted);
     EXPECT_EQ(decision.reason, RejectReason::AUTH_FAILED);
 }

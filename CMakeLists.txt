@@ -8,7 +8,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
 # ---------------------------------------------------------
-# Adaptive Radix Tree (ART)
+# 1. Global Include Path
+# ---------------------------------------------------------
+include_directories(${CMAKE_SOURCE_DIR})
+
+# ---------------------------------------------------------
+# 2. Dependencies (PostgreSQL & Threads)
+# ---------------------------------------------------------
+find_package(Threads REQUIRED)
+find_package(PostgreSQL REQUIRED)
+
+include_directories(${PostgreSQL_INCLUDE_DIRS})
+
+# ---------------------------------------------------------
+# 3. Adaptive Radix Tree (ART)
 # ---------------------------------------------------------
 set(ART_SRC_DIR "${CMAKE_SOURCE_DIR}/MatchingEngine/libs/art/src")
 
@@ -17,12 +30,12 @@ target_include_directories(art PUBLIC "${ART_SRC_DIR}")
 target_compile_features(art PUBLIC c_std_99)
 
 # ---------------------------------------------------------
-# External Dependencies (Abseil & GoogleTest)
+# 4. External Dependencies (Abseil & GoogleTest)
 # ---------------------------------------------------------
 FetchContent_Declare(
   absl
   GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-  GIT_TAG 20260107.0
+  GIT_TAG 20240116.2
 )
 set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(absl)
@@ -37,92 +50,59 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 include(GoogleTest)
 
+# ---------------------------------------------------------
+# 5. Project Subdirectories
+# ---------------------------------------------------------
 add_subdirectory(MatchingEngine)
 add_subdirectory(EMS)
 add_subdirectory(Settlement)
 add_subdirectory(Server)
+add_subdirectory(API)
 
 # ---------------------------------------------------------
-# Test 1: Pipeline Integration (integration_test.cc)
+# Helper Macro for GTests
 # ---------------------------------------------------------
-add_executable(pipeline_integration_test
-    tests/integration_test.cc
-)
-
-target_include_directories(pipeline_integration_test PRIVATE 
-    ${CMAKE_SOURCE_DIR}
-)
-
-target_link_libraries(pipeline_integration_test
-    PRIVATE
-        ems
-        settlement
-        GTest::gtest
-        GTest::gtest_main
-)
-
-# ---------------------------------------------------------
-# Test 2: EMS & Settlement Core (ems_settlement_integration_test.cc)
-# ---------------------------------------------------------
-add_executable(ems_settlement_test
-    tests/ems_settlement_integration_test.cc
-)
-
-target_include_directories(ems_settlement_test PRIVATE 
-    ${CMAKE_SOURCE_DIR}
-)
-
-target_link_libraries(ems_settlement_test
-    PRIVATE
-        ems
-        settlement
-        GTest::gtest
-        GTest::gtest_main
-)
+macro(add_valyrian_test TEST_NAME SOURCE_FILE)
+    add_executable(${TEST_NAME} ${SOURCE_FILE})
+    target_include_directories(${TEST_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${TEST_NAME}
+        PRIVATE
+            ems
+            settlement_lib
+            art
+            wal
+            GTest::gtest
+            GTest::gtest_main
+            Threads::Threads
+            ${PostgreSQL_LIBRARIES}
+    )
+    gtest_discover_tests(${TEST_NAME})
+endmacro()
 
 # ---------------------------------------------------------
-# Test 3: Matching Engine (matching_engine_test.cc)
+# 6. Executables & Integration Tests
 # ---------------------------------------------------------
-add_executable(matching_engine_test
-    tests/matching_engine_test.cc
-)
 
-target_include_directories(matching_engine_test PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/MatchingEngine/include
-)
+# The Smoke Test (To verify DB rows appear)
+add_executable(smoke_test tests/smoke_test.cc)
+target_link_libraries(smoke_test PRIVATE settlement_lib ${PostgreSQL_LIBRARIES} Threads::Threads)
+add_executable(stress_test tests/stress_test.cc)
+target_link_libraries(stress_test PRIVATE settlement_lib ${PostgreSQL_LIBRARIES} Threads::Threads)
+# The Stress Test (For performance profiling)
+# add_executable(stress_test tests/stress_test.cc)
+# target_link_libraries(stress_test PRIVATE ems settlement_lib ${PostgreSQL_LIBRARIES} Threads::Threads)
 
-target_link_libraries(matching_engine_test
-    PRIVATE
-        wal
-        art
-        settlement
-        GTest::gtest
-        GTest::gtest_main
-)
-
-# Discover all tests
-gtest_discover_tests(pipeline_integration_test)
-gtest_discover_tests(ems_settlement_test)
-gtest_discover_tests(matching_engine_test)
+# Standard GTests
+add_valyrian_test(pipeline_integration_test tests/integration_test.cc)
+add_valyrian_test(ems_settlement_test tests/ems_settlement_integration_test.cc)
+add_valyrian_test(matching_engine_test tests/matching_engine_test.cc)
 
 # ---------------------------------------------------------
-# Test 4: TCP Server Integration Tests
+# TCP Server Integration Tests
 # ---------------------------------------------------------
-add_executable(server_integration_test
-    tests/server_integration_test.cc
-)
-
-target_include_directories(server_integration_test PRIVATE
-    ${CMAKE_SOURCE_DIR}
-)
-
+add_executable(server_integration_test tests/server_integration_test.cc)
+target_include_directories(server_integration_test PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(server_integration_test
-    PRIVATE
-        server
-        ems
-        GTest::gtest
-        GTest::gtest_main
+    PRIVATE server ems GTest::gtest GTest::gtest_main
 )
-
 gtest_discover_tests(server_integration_test)
