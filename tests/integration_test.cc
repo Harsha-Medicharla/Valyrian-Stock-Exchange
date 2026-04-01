@@ -7,24 +7,34 @@
 #include "EMS/tracker/EMSOrderTracker.h"
 #include "Settlement/core/Settlement.h"
 
+#include "Settlement/common/Pool.h"
+#include "Settlement/entities/Trade.h"
+#include "Settlement/entities/Confirmation.h"
+
 using namespace EMS;
 using namespace EMS::model;
 
 // --- STATIC MEMORY POOL ---
-// Using absolute project paths and ::Settlement to resolve the naming conflict.
 static AuthService     g_auth;
 static RiskManager     g_risk;
 static MarketState     g_market;
 static SymbolRouter    g_router;
 static EMSOrderTracker g_tracker;
-static SettlementCore::Settlement    g_bank;
+
+// Static Pools for Settlement
+static Pool<Trade>             g_q4{1000};
+static Pool<Confirmation>      g_q5{1000};
+static std::unique_ptr<SettlementCore::Settlement> g_bank;
 
 class EMSPipelineIntegrationTest : public ::testing::Test {
 protected:
 void SetUp() override {
     g_market.openSymbol(0);
+    if (!g_bank) {
+        g_bank = std::make_unique<SettlementCore::Settlement>(g_q4, g_q5);
+    }
     // Give User 1 some money so the reserveMargin check passes!
-    g_bank.adminDeposit(1, 100000000); 
+    g_bank->adminDeposit(1, 100000000); 
 }
     OrderRequest createBaseOrder() {
         OrderRequest req;
@@ -39,7 +49,7 @@ void SetUp() override {
 
 // 1. SUCCESS PATH
 TEST_F(EMSPipelineIntegrationTest, ValidOrderIsAccepted) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, *g_bank);
     auto req = createBaseOrder();
     auto decision = pipeline.process(req);
     
@@ -49,7 +59,7 @@ TEST_F(EMSPipelineIntegrationTest, ValidOrderIsAccepted) {
 
 // 2. FUNDING GATE
 TEST_F(EMSPipelineIntegrationTest, RejectsInsufficientFunds) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, *g_bank);
     auto req = createBaseOrder();
     
     // We set a price that would logically fail. 
@@ -70,7 +80,7 @@ TEST_F(EMSPipelineIntegrationTest, RejectsInsufficientFunds) {
 
 // 3. AUTH GATE
 TEST_F(EMSPipelineIntegrationTest, RejectsUnauthorizedUser) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, *g_bank);
     auto req = createBaseOrder();
     req.user_id = 0; // Blacklisted ID in AuthService
 
@@ -81,7 +91,7 @@ TEST_F(EMSPipelineIntegrationTest, RejectsUnauthorizedUser) {
 
 // 4. MARKET STATE GATE
 TEST_F(EMSPipelineIntegrationTest, RejectsClosedMarketSymbol) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, *g_bank);
     auto req = createBaseOrder();
     req.symbol = 99; // Not opened in SetUp
 
@@ -92,7 +102,7 @@ TEST_F(EMSPipelineIntegrationTest, RejectsClosedMarketSymbol) {
 
 // 5. RISK GATE (FAT FINGER)
 TEST_F(EMSPipelineIntegrationTest, RejectsOrderAboveRiskLimit) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, *g_bank);
     auto req = createBaseOrder();
     req.quantity = 2000000; // Above the standard 1M limit
 
@@ -103,7 +113,7 @@ TEST_F(EMSPipelineIntegrationTest, RejectsOrderAboveRiskLimit) {
 
 // 6. PIPELINE PRIORITY (Auth should trigger before Risk/Settlement)
 TEST_F(EMSPipelineIntegrationTest, AuthFailsBeforeOtherChecks) {
-    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, g_bank);
+    EMSPipeline pipeline(g_auth, g_risk, g_market, g_router, g_tracker, *g_bank);
     auto req = createBaseOrder();
     req.user_id = 0;        // Fail Gate 1 (Auth)
     req.quantity = 5000000; // Fail Gate 3 (Risk)

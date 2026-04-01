@@ -1,10 +1,15 @@
 #include "Settlement/core/Settlement.h"
+#include "Settlement/common/Pool.h"
+#include "Settlement/entities/Trade.h"
+#include "Settlement/entities/Confirmation.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
 
 int main() {
-    SettlementCore::Settlement settlement;
+    Pool<Trade> q4_pool(1000);
+    Pool<Confirmation> q5_pool(1000);
+    SettlementCore::Settlement settlement(q4_pool, q5_pool);
 
     std::cout << "--- Starting Smoke Test ---" << std::endl;
 

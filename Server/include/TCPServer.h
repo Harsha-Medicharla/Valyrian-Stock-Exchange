@@ -9,7 +9,8 @@
 
 #include "../../EMS/queue/RingBuffer.h"
 #include "../../EMS/model/OrderRequest.h"
-#include "../../EMS/model/ClientResponse.h"
+#include "../../Settlement/entities/Confirmation.h"
+#include "../../Settlement/common/Pool.h"
 
 namespace Server {
 
@@ -18,8 +19,8 @@ class TCPServer {
 public:
     TCPServer(uint16_t port, 
               RingBuffer<EMS::model::OrderRequest, RingSize>& q1,
-              RingBuffer<EMS::model::ClientResponse, RingSize>& q4)
-        : port_(port), running_(false), q1_(q1), q4_(q4) {}
+              Pool<Confirmation>& q5)
+        : port_(port), running_(false), q1_(q1), q5_(q5) {}
     ~TCPServer() { stop(); }
 
     void start();
@@ -30,7 +31,7 @@ private:
     void setNonBlocking(int fd);
     void handleNewConnection();
     void handleClientData(int client_fd);
-    void pollQ4();
+    void pollQ5();
 
     uint16_t port_;
     int server_fd_{-1};
@@ -40,7 +41,7 @@ private:
     std::thread worker_thread_;
 
     RingBuffer<EMS::model::OrderRequest, RingSize>& q1_;
-    RingBuffer<EMS::model::ClientResponse, RingSize>& q4_;
+    Pool<Confirmation>& q5_;
 
     std::unordered_map<int, uint64_t> socket_to_user_;
     std::unordered_map<uint64_t, int> user_to_socket_;

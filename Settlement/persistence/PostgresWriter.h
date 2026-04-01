@@ -9,7 +9,7 @@ namespace SettlementCore {
 class PostgresWriter {
 public:
     PostgresWriter() {
-        const char* conn_info = "dbname=valyrian user=postgres password=root host=127.0.0.1 port=5432";
+        const char* conn_info = "dbname=valyrian user=vm1 password=password host=127.0.0.1 port=5432";
         conn = PQconnectdb(conn_info);
         if (PQstatus(conn) != CONNECTION_OK) {
             std::cerr << "Database Connection Failed: " << PQerrorMessage(conn) << std::endl;
@@ -26,8 +26,8 @@ public:
 
         // Constructing the SQL string to match your teammate's order_history schema
         std::string sql = "INSERT INTO order_history (user_id, symbol_id, side, type, status, price, quantity) VALUES "
-                          "(" + std::to_string(buyer) + "," + std::to_string(symbol) + ",'BUY','LIMIT','FILLED'," + std::to_string(price/100.0) + "," + std::to_string(qty) + "),"
-                          "(" + std::to_string(seller) + "," + std::to_string(symbol) + ",'SELL','LIMIT','FILLED'," + std::to_string(price/100.0) + "," + std::to_string(qty) + ");";
+                          "(" + std::to_string(buyer) + "," + std::to_string(symbol) + ",'BUY','LIMIT','FILLED'," + std::to_string(price) + "," + std::to_string(qty) + "),"
+                          "(" + std::to_string(seller) + "," + std::to_string(symbol) + ",'SELL','LIMIT','FILLED'," + std::to_string(price) + "," + std::to_string(qty) + ");";
 
         PGresult* res = PQexec(conn, sql.c_str());
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {

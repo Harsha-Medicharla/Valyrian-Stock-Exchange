@@ -20,7 +20,10 @@ FetchContent_MakeAvailable(Crow)
 
 # Define our API Server executable
 add_executable(APIServer
-    src/Server.cpp
+    src/main.cpp
+    src/handlers/UserHandler.cpp
+    src/handlers/SymbolHandler.cpp
+    src/handlers/AuthHandler.cpp
 )
 
 # Include directories

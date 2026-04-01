@@ -83,8 +83,8 @@ void TCPServer<RingSize>::threadLoop() {
     std::vector<epoll_event> events(MAX_EVENTS);
 
     while (running_) {
-        // Poll Q4 for outbound messages without blocking
-        pollQ4();
+        // Poll Q5 for outbound confirmations without blocking
+        pollQ5();
 
         // Wait for epoll events with small timeout (1ms)
         int nfds = epoll_wait(epoll_fd_, events.data(), MAX_EVENTS, 1);
@@ -171,24 +171,26 @@ void TCPServer<RingSize>::handleClientData(int client_fd) {
 }
 
 template<size_t RingSize>
-void TCPServer<RingSize>::pollQ4() {
-    EMS::model::ClientResponse response;
+void TCPServer<RingSize>::pollQ5() {
+    Confirmation* conf = nullptr;
     int count = 0;
-    while (q4_.pop(response) && count < 10) {
-        uint64_t user_id = 0;
-        if (response.type == EMS::model::ResponseType::EMS_DECISION) {
-            user_id = response.decision.original_request.user_id;
-        }
+    while (q5_.pop(conf) && count < 100) {
+        if (!conf) break;
+
+        uint64_t user_id = conf->user_id;
 
         if (user_to_socket_.count(user_id) > 0) {
             int client_fd = user_to_socket_[user_id];
-            ssize_t sent = write(client_fd, &response, sizeof(EMS::model::ClientResponse));
+            ssize_t sent = write(client_fd, conf, sizeof(Confirmation));
             if (sent == -1) {
-                std::cerr << "[TCPServer] Failed to write response to client FD: " << client_fd << std::endl;
+                std::cerr << "[TCPServer] Failed to write confirmation to client FD: " << client_fd << std::endl;
             }
         } else {
             std::cerr << "[TCPServer] No connected socket found for user_id: " << user_id << std::endl;
         }
+
+        // Deallocate back to Q5 pool as requested
+        q5_.deallocate(conf);
         count++;
     }
 }

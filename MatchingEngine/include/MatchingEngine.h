@@ -8,6 +8,11 @@
 #include <string>
 #include <algorithm>
 
+#include "Settlement/entities/Trade.h"
+#include "Settlement/common/Pool.h"
+#include <chrono>
+#include <iostream>
+
 class MatchingEngine {
 private:
     Symbol symbol; // Numeric ID (uint64_t)
@@ -15,12 +20,14 @@ private:
     WALSystem wal;
     bool is_recovering = false;
     SettlementCore::Settlement& settlement; 
+    Pool<Trade>& q4_pool;
 
 public:
     OrderBook order_book;
     
-    MatchingEngine(Symbol symbol, SettlementCore::Settlement& settlement_module)
-        : symbol(symbol), time_stamp(0), wal("engine_" + std::to_string(symbol)), settlement(settlement_module)
+    MatchingEngine(Symbol symbol, SettlementCore::Settlement& settlement_module, Pool<Trade>& q4)
+        : symbol(symbol), time_stamp(0), wal("engine_" + std::to_string(symbol)), 
+          settlement(settlement_module), q4_pool(q4)
     {
         is_recovering = true;
         wal.recover([this](const LogEntry &entry) {
@@ -118,11 +125,41 @@ public:
     void executeTrade(Order *aggressor, Order *resting_order, Price price, Qty qty) {
         if (!is_recovering) wal.logTrade(aggressor->order_id, resting_order->order_id, price, qty);
         
-        uint64_t buyer_id = (aggressor->side == Side::BUY) ? aggressor->user_id : resting_order->user_id;
-        uint64_t seller_id = (aggressor->side == Side::SELL) ? aggressor->user_id : resting_order->user_id;
+        // Allocate trade object from Q4 pool
+        Trade* trade = q4_pool.allocate();
+        if (!trade) {
+            std::cerr << "[MatchingEngine] Q4 Pool exhausted! Trade dropped." << std::endl;
+            return;
+        }
+
+        trade->trade_id = ++time_stamp; // Simple trade ID generation
+        trade->buy_order_id = (aggressor->side == Side::BUY) ? aggressor->order_id : resting_order->order_id;
+        trade->sell_order_id = (aggressor->side == Side::SELL) ? aggressor->order_id : resting_order->order_id;
+        trade->buy_user_id = (aggressor->side == Side::BUY) ? aggressor->user_id : resting_order->user_id;
+        trade->sell_user_id = (aggressor->side == Side::SELL) ? aggressor->user_id : resting_order->user_id;
         
-        // FIXED: symbol passed as uint64_t
-        settlement.settleTrade(buyer_id, seller_id, symbol, price, qty);
+        // Convert symbol to string ticker if needed, but our ME uses numeric symbols.
+        // We'll store the numeric symbol ID as a string or handle it.
+        std::string ticker = std::to_string(symbol);
+        strncpy(trade->symbol, ticker.c_str(), 7);
+        trade->symbol[7] = '\0';
+
+        trade->exec_price = price;
+        trade->exec_qty = qty;
+        trade->buy_total_qty = (aggressor->side == Side::BUY) ? aggressor->quantity : resting_order->quantity;
+        trade->sell_total_qty = (aggressor->side == Side::SELL) ? aggressor->quantity : resting_order->quantity;
+        trade->timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+        trade->checksum = 0; // TBD
+
+        // Push to Q4
+        if (!q4_pool.push(trade)) {
+            std::cerr << "[MatchingEngine] Failed to push trade to Q4." << std::endl;
+            q4_pool.deallocate(trade);
+            return;
+        }
+
+        // Instant RAM Transfer (Sync)
+        settlement.settleTrade(trade->buy_user_id, trade->sell_user_id, symbol, price, qty);
     }
 
     void updateOrderState(Order *order) noexcept {

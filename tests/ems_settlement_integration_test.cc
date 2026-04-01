@@ -11,6 +11,10 @@
 #include "EMS/core/EMSConfig.h" 
 #include "Settlement/core/Settlement.h"
 
+#include "Settlement/common/Pool.h"
+#include "Settlement/entities/Trade.h"
+#include "Settlement/entities/Confirmation.h"
+
 using namespace EMS;
 using namespace EMS::model;
 
@@ -22,7 +26,11 @@ protected:
     MarketState                 market;
     SymbolRouter                router;
     EMSOrderTracker             tracker;
-    SettlementCore::Settlement  bank;
+    
+    // Pool dependencies for Settlement
+    Pool<Trade>                 q4_pool{1000};
+    Pool<Confirmation>          q5_pool{1000};
+    std::unique_ptr<SettlementCore::Settlement> bank;
     
     std::unique_ptr<EMSPipeline> pipeline;
 
@@ -30,11 +38,14 @@ protected:
         // Open symbol 0 for trading
         market.openSymbol(0);
         
+        // Initialize Settlement with pools
+        bank = std::make_unique<SettlementCore::Settlement>(q4_pool, q5_pool);
+        
         // Seed User 1 with cash (100 million cents/units)
-        bank.adminDeposit(1, 100000000); 
+        bank->adminDeposit(1, 100000000); 
 
         // Initialize the pipeline with dependencies
-        pipeline = std::make_unique<EMSPipeline>(auth, risk, market, router, tracker, bank);
+        pipeline = std::make_unique<EMSPipeline>(auth, risk, market, router, tracker, *bank);
     }
 
     // TearDown is handled automatically; the Settlement destructor 
@@ -63,7 +74,7 @@ TEST_F(EMSPipelineTest, ValidBuyOrderIsAccepted) {
 
 TEST_F(EMSPipelineTest, AcceptsSellWithSufficientShares) {
     // Give User 1 some shares of Symbol 0
-    bank.adminDepositShares(1, 0, 1000); 
+    bank->adminDepositShares(1, 0, 1000); 
     
     auto req = createBaseOrder();
     req.side = Side::SELL;

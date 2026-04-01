@@ -1,10 +1,16 @@
 #include "Settlement/core/Settlement.h"
+#include "Settlement/common/Pool.h"
+#include "Settlement/entities/Trade.h"
+#include "Settlement/entities/Confirmation.h"
 #include <iostream>
 #include <chrono>
+#include <thread>
 #include <vector>
 
 int main() {
-    SettlementCore::Settlement settlement;
+    Pool<Trade> q4_pool(100000);
+    Pool<Confirmation> q5_pool(100000);
+    SettlementCore::Settlement settlement(q4_pool, q5_pool);
     const int MATCH_COUNT = 5000; // Total of 10,000 DB rows
 
     std::cout << "--- Starting Stress Test: 5,000 Matches ---" << std::endl;

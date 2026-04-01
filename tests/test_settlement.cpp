@@ -51,21 +51,6 @@ void runMockMatchingEngine(Pool<Trade>* q4_pool) {
     std::cout << "[ME] Matching Engine stopped.\n";
 }
 
-// --- CONSUMER: Settlement Pipeline ---
-void runSettlement(Settlement* settlement_module) {
-    std::cout << "[SETTLEMENT] Pipeline started.\n";
-    
-    while (exchange_running) {
-        // Drain Q4, process, and push to Q5
-        settlement_module->processQueue();
-        std::this_thread::yield(); 
-    }
-    
-    // One last drain to clear the queue after ME stops
-    settlement_module->processQueue();
-    std::cout << "[SETTLEMENT] Pipeline stopped.\n";
-}
-
 // --- MAIN TEST RUNNER ---
 int main() {
     std::cout << "--- Starting Settlement Module Test ---\n";
@@ -79,12 +64,11 @@ int main() {
     Pool<Trade> q4_trade_pool(config.q4_pool_size);
     Pool<Confirmation> q5_conf_pool(config.q5_pool_size);
 
-    // 3. Instantiate Settlement System
-    Settlement settlement(&q4_trade_pool, &q5_conf_pool);
+    // 3. Instantiate Settlement System (Auto-starts worker thread)
+    Settlement settlement(q4_trade_pool, q5_conf_pool);
 
-    // 4. Launch Threads
+    // 4. Launch Mock Matching Engine Thread
     std::thread me_thread(runMockMatchingEngine, &q4_trade_pool);
-    std::thread settlement_thread(runSettlement, &settlement);
 
     // 5. Let it run for 3 seconds, then shut down
     std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -94,7 +78,7 @@ int main() {
 
     // 6. Wait for threads to finish
     me_thread.join();
-    settlement_thread.join();
+    // Settlement thread is joined in its destructor
 
     std::cout << "--- Test Complete ---\n";
     return 0;
