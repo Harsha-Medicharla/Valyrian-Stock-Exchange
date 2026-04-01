@@ -1,0 +1,5 @@
+if(EXISTS "/home/chris/Valyrian-Stock-Exchange/build/ems_settlement_test[1]_tests.cmake")
+  include("/home/chris/Valyrian-Stock-Exchange/build/ems_settlement_test[1]_tests.cmake")
+else()
+  add_test(ems_settlement_test_NOT_BUILT ems_settlement_test_NOT_BUILT)
+endif()

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libart.a CMakeFiles/art.dir/MatchingEngine/libs/art/src/art.c.o
+/usr/bin/ranlib libart.a

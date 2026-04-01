@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/CMakeFiles/absl-populate"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/CMakeFiles/absl-populate.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/CMakeFiles/absl-populate-complete.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-build.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-configure.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-download.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-install.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-patch.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-test.rule"
+		},
+		{
+			"file" : "/home/chris/Valyrian-Stock-Exchange/build/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"absl-populate"
+		],
+		"name" : "absl-populate"
+	}
+}

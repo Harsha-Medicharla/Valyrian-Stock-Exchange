@@ -1,0 +1,5 @@
+if(EXISTS "/home/chris/Valyrian-Stock-Exchange/build/pipeline_integration_test[1]_tests.cmake")
+  include("/home/chris/Valyrian-Stock-Exchange/build/pipeline_integration_test[1]_tests.cmake")
+else()
+  add_test(pipeline_integration_test_NOT_BUILT pipeline_integration_test_NOT_BUILT)
+endif()

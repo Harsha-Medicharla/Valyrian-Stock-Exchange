@@ -1,12 +1,11 @@
 #include "EMS/pipeline/EMSPipeline.h"
-#include "EMS/model/OrderRequest.h"
-#include "EMS/model/EMSDecision.h"
-#include "EMS/model/RejectReason.h"
 #include "EMS/auth/AuthService.h"
 #include "EMS/risk/RiskManager.h"
 #include "EMS/market/MarketState.h"
-#include "EMS/routing/SymbolRouter.h"
 #include "EMS/tracker/EMSOrderTracker.h"
+#include "EMS/model/OrderRequest.h"
+#include "EMS/model/EMSDecision.h"
+#include "EMS/model/RejectReason.h"
 #include "Settlement/core/Settlement.h"
 
 namespace EMS {
@@ -46,10 +45,27 @@ EMS::model::EMSDecision EMSPipeline::process(const EMS::model::OrderRequest& req
         return decision;
     }
 
-    // 4. Settlement/Margin Check (Now matching the uint64_t Symbol type)
-    if (!settlement_.reserveMargin(request.user_id, request.symbol, static_cast<uint8_t>(request.side), request.price, request.quantity)) {
+    // 4. Settlement/Margin Check
+    // FIX: Using request.side directly. 
+    // In your system, Side::BUY is likely 0 or 1. 
+    // We map it to 1 (BUY) and 2 (SELL) for the Settlement Engine.
+    uint8_t numeric_side = (static_cast<int>(request.side) == 0) ? 1 : 2; 
+    
+    // If your Enum is BUY=1, SELL=2, use this instead:
+    // uint8_t numeric_side = static_cast<uint8_t>(request.side);
+
+    if (!settlement_.reserveMargin(request.user_id, 
+                                   request.symbol, 
+                                   numeric_side, 
+                                   request.price, 
+                                   request.quantity)) {
         decision.accepted = false;
-        decision.reason = EMS::model::RejectReason::INSUFFICIENT_FUNDS; 
+        
+        if (numeric_side == 1) {
+            decision.reason = EMS::model::RejectReason::INSUFFICIENT_FUNDS;
+        } else {
+            decision.reason = EMS::model::RejectReason::INSUFFICIENT_SHARES;
+        }
         return decision;
     }
 

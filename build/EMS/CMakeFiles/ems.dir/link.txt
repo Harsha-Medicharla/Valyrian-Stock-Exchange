@@ -1,0 +1,2 @@
+/usr/bin/ar qc libems.a CMakeFiles/ems.dir/core/EMS.cpp.o CMakeFiles/ems.dir/dispatcher/Dispatcher.cpp.o CMakeFiles/ems.dir/pipeline/EMSPipeline.cpp.o CMakeFiles/ems.dir/threading/IngressWorker.cpp.o CMakeFiles/ems.dir/auth/AuthService.cpp.o CMakeFiles/ems.dir/risk/RiskManager.cpp.o CMakeFiles/ems.dir/market/MarketState.cpp.o CMakeFiles/ems.dir/routing/SymbolRouter.cpp.o CMakeFiles/ems.dir/tracker/EMSOrderTracker.cpp.o CMakeFiles/ems.dir/ports/RingBufferEgress.cpp.o
+/usr/bin/ranlib libems.a
