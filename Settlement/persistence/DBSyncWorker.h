@@ -1,19 +1,37 @@
 #pragma once
+
+#include "Settlement/entities/Trade.h"
 #include "Settlement/persistence/PostgresWriter.h"
-#include <cstdint>
+
+#include <queue>
+#include <mutex>
+#include <thread>
+#include <atomic>
+#include <condition_variable>
 
 namespace SettlementCore {
 
 class DBSyncWorker {
 public:
-    DBSyncWorker() = default;
+    DBSyncWorker();
+    ~DBSyncWorker();
 
-    // The primary entry point for the background thread
-    void persist(uint64_t buyer, uint64_t seller, uint64_t symbol, int64_t price, int32_t qty);
+    void start();
+    void stop();
+
+    void enqueue(const Trade& t);
 
 private:
-    // This holds the actual database connection logic
+    void run();
+
+    std::queue<Trade> queue;
+    std::mutex mtx;
+    std::condition_variable cv;
+
+    std::thread worker;
+    std::atomic<bool> running;
+
     PostgresWriter pgWriter;
 };
 
-} // namespace SettlementCore
+}

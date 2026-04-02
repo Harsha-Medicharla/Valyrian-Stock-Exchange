@@ -2,7 +2,7 @@
 #include <libpq-fe.h>
 #include <string>
 #include <iostream>
-#include <cstdint>  // <--- THIS IS THE FIX
+#include <cstdint>
 
 namespace SettlementCore {
 
@@ -11,6 +11,7 @@ public:
     PostgresWriter() {
         const char* conn_info = "dbname=valyrian user=postgres password=root host=127.0.0.1 port=5432";
         conn = PQconnectdb(conn_info);
+
         if (PQstatus(conn) != CONNECTION_OK) {
             std::cerr << "Database Connection Failed: " << PQerrorMessage(conn) << std::endl;
         }
@@ -20,19 +21,51 @@ public:
         if (conn) PQfinish(conn);
     }
 
-    // Now uint64_t and int64_t will be recognized
-    void writeTrade(uint64_t buyer, uint64_t seller, uint64_t symbol, int64_t price, int32_t qty) {
+    void writeTrade(uint64_t trade_id,
+                    uint64_t buyer,
+                    uint64_t seller,
+                    uint64_t symbol,
+                    int64_t price,
+                    int32_t qty) 
+    {
         if (!conn || PQstatus(conn) != CONNECTION_OK) return;
 
-        // Constructing the SQL string to match your teammate's order_history schema
-        std::string sql = "INSERT INTO order_history (user_id, symbol_id, side, type, status, price, quantity) VALUES "
-                          "(" + std::to_string(buyer) + "," + std::to_string(symbol) + ",'BUY','LIMIT','FILLED'," + std::to_string(price/100.0) + "," + std::to_string(qty) + "),"
-                          "(" + std::to_string(seller) + "," + std::to_string(symbol) + ",'SELL','LIMIT','FILLED'," + std::to_string(price/100.0) + "," + std::to_string(qty) + ");";
+        std::string trade_id_s = std::to_string(trade_id);
+        std::string buyer_s = std::to_string(buyer);
+        std::string seller_s = std::to_string(seller);
+        std::string symbol_s = std::to_string(symbol);
+        std::string price_s = std::to_string(price / 100.0);
+        std::string qty_s = std::to_string(qty);
 
-        PGresult* res = PQexec(conn, sql.c_str());
+        const char* paramValues[6] = {
+            trade_id_s.c_str(),
+            buyer_s.c_str(),
+            seller_s.c_str(),
+            symbol_s.c_str(),
+            price_s.c_str(),
+            qty_s.c_str()
+        };
+//idempotency
+        const char* sql =
+            "INSERT INTO trades (trade_id, buyer, seller, symbol, price, qty) "
+            "VALUES ($1, $2, $3, $4, $5, $6) "
+            "ON CONFLICT (trade_id) DO NOTHING;";
+
+        PGresult* res = PQexecParams(
+            conn,
+            sql,
+            6,
+            nullptr,
+            paramValues,
+            nullptr,
+            nullptr,
+            0
+        );
+
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
             std::cerr << "Postgres INSERT Error: " << PQerrorMessage(conn) << std::endl;
         }
+
         PQclear(res);
     }
 
@@ -40,4 +73,4 @@ private:
     PGconn* conn = nullptr;
 };
 
-} // namespace SettlementCore
+} 

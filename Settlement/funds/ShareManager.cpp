@@ -34,6 +34,11 @@ bool ShareManager::reserveShares(uint64_t user_id, uint64_t symbol, int64_t qty)
 
     return true;
 }
+void ShareManager::addShares(uint64_t user_id, uint64_t symbol, int64_t qty) {
+    std::string sym = std::to_string(symbol);
+    auto& h = holdings[user_id][sym];
+    h.qty += qty;
+}
 
 void ShareManager::releaseShares(uint64_t user_id, uint64_t symbol, int64_t qty) {
     std::string sym = std::to_string(symbol);

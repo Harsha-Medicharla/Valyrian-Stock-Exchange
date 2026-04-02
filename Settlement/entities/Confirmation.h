@@ -1,4 +1,4 @@
-// entities/Confirmation.h
+
 #pragma once
 #include <cstdint>
 

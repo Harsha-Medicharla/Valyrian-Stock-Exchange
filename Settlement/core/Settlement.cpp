@@ -4,40 +4,18 @@
 
 namespace SettlementCore {
 
-Settlement::Settlement() : q4(nullptr), q5(nullptr) {}
+Settlement::Settlement()
+    : q4(nullptr), q5(nullptr), wal("wal.log") {
+    db_worker.start();   // 🔥 start async worker
+}
 
 Settlement::Settlement(
     RingBuffer<Trade, QUEUE_SIZE>* q4,
     RingBuffer<Confirmation, QUEUE_SIZE>* q5
-) : q4(q4), q5(q5) {}
-void Settlement::releaseMargin(
-    uint64_t user_id,
-    uint64_t symbol,
-    uint8_t side,
-    int64_t price,
-    int32_t qty
-) {
-    if (side == 1) { // BUY
-        int64_t amount = price * qty;
-        fund_manager.releaseFunds(user_id, amount);
-    } else { // SELL
-        share_manager.releaseShares(user_id, symbol, qty);
-    }
+) : q4(q4), q5(q5), wal("wal.log") {
+    db_worker.start();   // 🔥 start async worker
 }
-bool Settlement::reserveMargin(
-    uint64_t user_id,
-    uint64_t symbol,
-    uint8_t side,
-    int64_t price,
-    int32_t qty
-) {
-    if (side == 1) { // BUY
-        int64_t amount = price * qty;
-        return fund_manager.reserveFunds(user_id, amount);
-    } else { // SELL
-        return share_manager.reserveShares(user_id, symbol, qty);
-    }
-}
+
 void Settlement::run() {
     if (!q4 || !q5) {
         std::cerr << "Queues not initialized\n";
@@ -54,6 +32,9 @@ void Settlement::run() {
 }
 
 void Settlement::processTrade(Trade& t) {
+
+    // WAL first (durability)
+    wal.log(t);
 
     if (!validator.validate(&t)) {
         std::cerr << "Trade validation failed: " << t.trade_id << "\n";
@@ -79,11 +60,12 @@ void Settlement::processTrade(Trade& t) {
 
     delete buy_conf;
     delete sell_conf;
+
+    // 🔥 ASYNC DB WRITE (NON-BLOCKING)
+    db_worker.enqueue(t);
 }
 
-//
-// 🔥 TEST HELPERS
-//
+// ---------------- TEST HELPERS ----------------
 
 void Settlement::adminDeposit(uint64_t user_id, int64_t amount) {
     Trade fake{};
@@ -95,15 +77,7 @@ void Settlement::adminDeposit(uint64_t user_id, int64_t amount) {
 }
 
 void Settlement::adminDepositShares(uint64_t user_id, uint64_t symbol, int64_t qty) {
-    std::string sym = std::to_string(symbol);
-
-    // Directly modify holdings (test shortcut)
-    share_manager.transferShares(new Trade{
-        0, user_id, user_id, symbol, 0, (int32_t)qty, 0
-    });
-
-    // cleaner version (but requires exposing internals)
-    // share_manager.holdings[user_id][sym].qty += qty;
+    share_manager.addShares(user_id, symbol, qty);
 }
 
 void Settlement::settleTrade(
@@ -113,19 +87,49 @@ void Settlement::settleTrade(
     int64_t price,
     int32_t qty
 ) {
-    static uint64_t next_trade_id = 1;  // 🔥 persists across calls
+    static uint64_t next_trade_id = 1;
 
     Trade t{};
-    t.trade_id = next_trade_id++;       // 🔥 unique ID every time
+    t.trade_id = next_trade_id++;
     t.buyer_id = buyer;
     t.seller_id = seller;
     t.symbol = symbol;
     t.price = price;
     t.qty = qty;
 
-    // recompute checksum properly
     t.checksum = t.trade_id ^ buyer ^ seller ^ symbol ^ price ^ qty;
 
     processTrade(t);
 }
+
+// ---------------- EMS ----------------
+
+bool Settlement::reserveMargin(
+    uint64_t user_id,
+    uint64_t symbol,
+    uint8_t side,
+    int64_t price,
+    int32_t qty
+) {
+    if (side == 1) {
+        return fund_manager.reserveFunds(user_id, price * qty);
+    } else {
+        return share_manager.reserveShares(user_id, symbol, qty);
+    }
+}
+
+void Settlement::releaseMargin(
+    uint64_t user_id,
+    uint64_t symbol,
+    uint8_t side,
+    int64_t price,
+    int32_t qty
+) {
+    if (side == 1) {
+        fund_manager.releaseFunds(user_id, price * qty);
+    } else {
+        share_manager.releaseShares(user_id, symbol, qty);
+    }
+}
+
 }

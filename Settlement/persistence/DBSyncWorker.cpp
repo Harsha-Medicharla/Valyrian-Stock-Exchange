@@ -3,20 +3,66 @@
 
 namespace SettlementCore {
 
-void DBSyncWorker::persist(uint64_t buyer, uint64_t seller, uint64_t symbol, int64_t price, int32_t qty) {
-    try {
-        // Log the attempt (optional, good for debugging server logs)
-        // std::cout << "[DBSyncWorker] Persisting trade for symbol: " << symbol << std::endl;
+DBSyncWorker::DBSyncWorker() : running(false) {}
 
-        // Call the underlying SQL writer
-        pgWriter.writeTrade(buyer, seller, symbol, price, qty);
-        
-    } catch (const std::exception& e) {
-        // CRITICAL: On a server, we log errors to stderr so they show up in system logs
-        std::cerr << "[DBSyncWorker] DATABASE ERROR: " << e.what() << std::endl;
-    } catch (...) {
-        std::cerr << "[DBSyncWorker] Unknown error occurred during DB sync." << std::endl;
+DBSyncWorker::~DBSyncWorker() {
+    stop();
+}
+
+void DBSyncWorker::start() {
+    running = true;
+    worker = std::thread(&DBSyncWorker::run, this);
+}
+
+void DBSyncWorker::stop() {
+    running = false;
+    cv.notify_all();
+
+    if (worker.joinable()) {
+        worker.join();
     }
 }
 
-} // namespace SettlementCore
+void DBSyncWorker::enqueue(const Trade& t) {
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        queue.push(t);
+    }
+    cv.notify_one();
+}
+
+void DBSyncWorker::run() {
+    while (running) {
+        std::unique_lock<std::mutex> lock(mtx);
+
+        cv.wait(lock, [&]() {
+            return !queue.empty() || !running;
+        });
+
+        while (!queue.empty()) {
+            Trade t = queue.front();
+            queue.pop();
+
+            lock.unlock();
+
+            try {
+                pgWriter.writeTrade(
+                    t.trade_id,
+                    t.buyer_id,
+                    t.seller_id,
+                    t.symbol,
+                    t.price,
+                    t.qty
+                );
+            } catch (const std::exception& e) {
+                std::cerr << "[DBSyncWorker] DB ERROR: " << e.what() << std::endl;
+            } catch (...) {
+                std::cerr << "[DBSyncWorker] Unknown DB error\n";
+            }
+
+            lock.lock();
+        }
+    }
+}
+
+}

@@ -14,6 +14,7 @@ public:
     void transferShares(Trade* t);
     bool reserveShares(uint64_t user_id, uint64_t symbol, int64_t qty);
     void releaseShares(uint64_t user_id, uint64_t symbol, int64_t qty);
+    void addShares(uint64_t user_id, uint64_t symbol, int64_t qty);
 
 private:
     std::unordered_map<uint64_t, std::unordered_map<std::string, Holding>> holdings;
