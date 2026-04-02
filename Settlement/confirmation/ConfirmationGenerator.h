@@ -1,20 +1,15 @@
 #pragma once
-#include <iostream>
-#include <cstdint>
-#include <string>
+#include "../entities/Trade.h"
+#include "../entities/Confirmation.h"
+#include "../core/PartialFillHandler.h"
 
-namespace SettlementCore {
+#include <utility>
 
 class ConfirmationGenerator {
 public:
-    // We make this static so Settlement.h can call it without an instance
-    static void generate(uint64_t buyer, uint64_t seller, uint64_t symbol, int64_t price, int32_t qty) {
-        std::cout << "[CONFIRMATION] Trade Executed | Symbol: " << symbol 
-                  << " | Price: " << (price / 100.0) 
-                  << " | Qty: " << qty 
-                  << " | Buyer: " << buyer 
-                  << " | Seller: " << seller << std::endl;
-    }
-};
+    std::pair<Confirmation*, Confirmation*> generate(Trade* t, FillResult r);
 
-} // namespace SettlementCore
+private:
+    Confirmation* createBuy(Trade* t, FillResult r);
+    Confirmation* createSell(Trade* t, FillResult r);
+};

@@ -1,16 +1,39 @@
-#include "Settlement/funds/FundManager.h"
-#include <mutex>
+#include "FundManager.h"
 
-namespace SettlementCore {
+void FundManager::unblockBuyer(Trade* t) {
+    auto& f = funds[t->buyer_id];
 
-void FundManager::processBuyer(uint64_t user_id, Money trade_value) {
-    std::unique_lock lock(rw_mutex);
-    balances[user_id].reserved -= trade_value;
+    int64_t amount = t->price * t->qty;
+    f.blocked -= amount;
 }
 
-void FundManager::processSeller(uint64_t user_id, Money trade_value) {
-    std::unique_lock lock(rw_mutex);
-    balances[user_id].available += trade_value;
+void FundManager::debitBuyer(Trade* t) {
+    auto& f = funds[t->buyer_id];
+
+    int64_t amount = t->price * t->qty;
+    f.balance -= amount;
 }
 
-} // namespace SettlementCore
+void FundManager::creditSeller(Trade* t) {
+    auto& f = funds[t->seller_id];
+
+    int64_t amount = t->price * t->qty;
+    f.balance += amount;
+}
+bool FundManager::reserveFunds(uint64_t user_id, int64_t amount) {
+    auto& f = funds[user_id];
+
+    if (f.balance < amount) return false;
+
+    f.balance -= amount;
+    f.blocked += amount;
+
+    return true;
+}
+
+void FundManager::releaseFunds(uint64_t user_id, int64_t amount) {
+    auto& f = funds[user_id];
+
+    f.blocked -= amount;
+    f.balance += amount;
+}

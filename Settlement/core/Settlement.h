@@ -1,116 +1,86 @@
 #pragma once
 
-#include "Settlement/funds/FundManager.h"
-#include "Settlement/funds/ShareManager.h"
-#include "Settlement/persistence/DBSyncWorker.h" 
-#include "Settlement/confirmation/ConfirmationGenerator.h"
 #include <cstdint>
-#include <thread>
-#include <atomic>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
+
+#include "../entities/Trade.h"
+#include "../entities/Confirmation.h"
+
+#include "../funds/FundManager.h"
+#include "../funds/ShareManager.h"
+#include "../market/SymbolDataUpdater.h"
+#include "../confirmation/ConfirmationGenerator.h"
+#include "../core/TradeValidator.h"
+#include "../core/PartialFillHandler.h"
+
+#include "../../EMS/queue/RingBuffer.h"
 
 namespace SettlementCore {
 
-struct TradeRecord {
-    uint64_t buyer_id;
-    uint64_t seller_id;
-    uint64_t symbol;
-    int64_t price;
-    int32_t qty;
-};
-
 class Settlement {
 public:
-    Settlement() : running(true) {
-        // Start the background worker thread
-        worker_thread = std::thread(&Settlement::processQueue, this);
-    }
+    static const size_t QUEUE_SIZE = 1024;
 
-    ~Settlement() {
-        // Signal thread to stop
-        running = false;
-        cv.notify_all(); 
-        
-        // Wait for thread to finish processing remaining queue
-        if (worker_thread.joinable()) {
-            worker_thread.join();
-        }
-    }
+    // ✅ Default constructor (used by tests / EMS)
+    Settlement();
 
-    // --- ADMIN / TEST INTERFACE ---
-    void adminDeposit(uint64_t user_id, int64_t amount) {
-        fund_manager.deposit(user_id, amount);
-    }
-    
-    void adminDepositShares(uint64_t user_id, uint64_t symbol, int32_t qty) {
-        share_manager.deposit(user_id, symbol, qty);
-    }
+    // ✅ Queue-based constructor (real pipeline)
+    Settlement(
+        RingBuffer<Trade, QUEUE_SIZE>* q4,
+        RingBuffer<Confirmation, QUEUE_SIZE>* q5
+    );
 
-    // --- PRE-TRADE RISK (HOT PATH) ---
-    bool reserveMargin(uint64_t user_id, uint64_t symbol, uint8_t side, int64_t price, int32_t qty) {
-        if (side == 1) return fund_manager.reserveFunds(user_id, price * qty);
-        return share_manager.reserve(user_id, symbol, qty);
-    }
+    // ✅ Main processing loop
+    void run();
 
-    void releaseMargin(uint64_t user_id, uint64_t symbol, uint8_t side, int64_t price, int32_t qty) {
-        if (side == 1) fund_manager.releaseFunds(user_id, price * qty);
-        else share_manager.release(user_id, symbol, qty);
-    }
+    // =========================
+    // 🔥 TEST / SIMULATION APIs
+    // =========================
 
-    // --- TRADE SETTLEMENT (HOT PATH) ---
-    void settleTrade(uint64_t buyer_id, uint64_t seller_id, uint64_t symbol, int64_t price, int32_t qty) {
-        // 1. Instant RAM Transfer (Atomic Swap)
-        fund_manager.transferFunds(buyer_id, seller_id, price * qty);
-        share_manager.transferShares(seller_id, buyer_id, symbol, qty);
+    void adminDeposit(uint64_t user_id, int64_t amount);
+    void adminDepositShares(uint64_t user_id, uint64_t symbol, int64_t qty);
 
-        // 2. Offload to Slow Path (Persistence & Notifications)
-        {
-            std::lock_guard<std::mutex> lock(queue_mutex);
-            q4_trades.push({buyer_id, seller_id, symbol, price, qty});
-        }
-        cv.notify_one(); 
-    }
+    void settleTrade(
+        uint64_t buyer,
+        uint64_t seller,
+        uint64_t symbol,
+        int64_t price,
+        int32_t qty
+    );
+
+    // =========================
+    // 🔥 MATCHING ENGINE API
+    // =========================
+
+    void releaseMargin(
+        uint64_t user_id,
+        uint64_t symbol,
+        uint8_t side,
+        int64_t price,
+        int32_t qty
+    );
+    bool reserveMargin(
+    uint64_t user_id,
+    uint64_t symbol,
+    uint8_t side,
+    int64_t price,
+    int32_t qty
+    );
 
 private:
-    // --- BACKGROUND PROCESSING (SLOW PATH) ---
-    void processQueue() {
-        while (running || !q4_trades.empty()) {
-            TradeRecord trade;
-            {
-                std::unique_lock<std::mutex> lock(queue_mutex);
-                cv.wait(lock, [this]() { return !q4_trades.empty() || !running; });
-                
-                // Exit condition: not running and no more trades to save
-                if (!running && q4_trades.empty()) return;
+    // Core pipeline step
+    void processTrade(Trade& trade);
 
-                trade = q4_trades.front();
-                q4_trades.pop();
-            }
+    // Queues
+    RingBuffer<Trade, QUEUE_SIZE>* q4;
+    RingBuffer<Confirmation, QUEUE_SIZE>* q5;
 
-            // 1. PERSISTENCE: Write to Postgres via the Sync Worker
-            // This is decoupled so if the DB hangs, the matching engine doesn't
-            db_worker.persist(trade.buyer_id, trade.seller_id, trade.symbol, trade.price, trade.qty);
-
-            // 2. CONFIRMATIONS: Notify the users/external systems
-            ConfirmationGenerator::generate(trade.buyer_id, trade.seller_id, trade.symbol, trade.price, trade.qty);
-        }
-    }
-
-    // Core Managers (Hot Path)
-    FundManager fund_manager; 
+    // Modules
+    TradeValidator validator;
+    FundManager fund_manager;
     ShareManager share_manager;
-
-    // External Connectors (Slow Path)
-    DBSyncWorker db_worker; 
-    
-    // Threading
-    std::atomic<bool> running;
-    std::thread worker_thread;
-    std::queue<TradeRecord> q4_trades; 
-    std::mutex queue_mutex;
-    std::condition_variable cv;
+    SymbolDataUpdater market_updater;
+    PartialFillHandler partial_handler;
+    ConfirmationGenerator confirmation_gen;
 };
 
-} // namespace SettlementCore
+}

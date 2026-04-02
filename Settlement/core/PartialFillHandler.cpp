@@ -1,10 +1,15 @@
 #include "PartialFillHandler.h"
-#include <iostream>
 
-void PartialFillHandler::process(const Trade* trade, int32_t buy_remaining, int32_t sell_remaining) {
-    // If we needed Immediate-Or-Cancel expiration, we'd release funds here.
-    // Otherwise, standard limit orders handle partials inside the ME.
-    if (buy_remaining > 0 || sell_remaining > 0) {
-        // Just leaving this here if you want to track partials later
-    }
+#define FILLED 1
+
+FillResult PartialFillHandler::handle(Trade* t) {
+    FillResult res;
+
+    res.buy_remaining = 0;
+    res.sell_remaining = 0;
+
+    res.buy_status = FILLED;
+    res.sell_status = FILLED;
+
+    return res;
 }
