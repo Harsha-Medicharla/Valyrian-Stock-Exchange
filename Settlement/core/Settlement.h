@@ -40,7 +40,7 @@ public:
     void releaseMargin(uint64_t user_id, uint64_t symbol, uint8_t side, int64_t price, int32_t qty);
 
 private:
-    void processTrade(Trade& trade);
+    void processTrade(Trade& trade, bool from_replay);
 
     RingBuffer<Trade, QUEUE_SIZE>* q4;
     RingBuffer<Confirmation, QUEUE_SIZE>* q5;

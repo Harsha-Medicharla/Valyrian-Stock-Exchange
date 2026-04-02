@@ -1,40 +1,47 @@
 #include "Settlement.h"
 #include <iostream>
-#include <string>
 
 namespace SettlementCore {
 
 Settlement::Settlement()
     : q4(nullptr), q5(nullptr), wal("wal.log") {
-    db_worker.start();   // 🔥 start async worker
+
+    wal.replay([this](const Trade& t) {
+        Trade copy = t;
+        processTrade(copy, true);
+    });
+
+    db_worker.start();
 }
 
 Settlement::Settlement(
     RingBuffer<Trade, QUEUE_SIZE>* q4,
     RingBuffer<Confirmation, QUEUE_SIZE>* q5
 ) : q4(q4), q5(q5), wal("wal.log") {
-    db_worker.start();   // 🔥 start async worker
+
+    wal.replay([this](const Trade& t) {
+        Trade copy = t;
+        processTrade(copy, true);
+    });
+
+    db_worker.start();
 }
 
 void Settlement::run() {
-    if (!q4 || !q5) {
-        std::cerr << "Queues not initialized\n";
-        return;
-    }
+    if (!q4 || !q5) return;
 
     while (true) {
         Trade trade;
-
         if (!q4->pop(trade)) continue;
-
-        processTrade(trade);
+        processTrade(trade, false);
     }
 }
 
-void Settlement::processTrade(Trade& t) {
+void Settlement::processTrade(Trade& t, bool from_replay) {
 
-    // WAL first (durability)
-    wal.log(t);
+    if (!from_replay) {
+        wal.log(t);
+    }
 
     if (!validator.validate(&t)) {
         std::cerr << "Trade validation failed: " << t.trade_id << "\n";
@@ -53,7 +60,7 @@ void Settlement::processTrade(Trade& t) {
 
     auto [buy_conf, sell_conf] = confirmation_gen.generate(&t, result);
 
-    if (q5) {
+    if (!from_replay && q5) {
         q5->push(*buy_conf);
         q5->push(*sell_conf);
     }
@@ -61,18 +68,16 @@ void Settlement::processTrade(Trade& t) {
     delete buy_conf;
     delete sell_conf;
 
-    // 🔥 ASYNC DB WRITE (NON-BLOCKING)
     db_worker.enqueue(t);
 }
 
-// ---------------- TEST HELPERS ----------------
+// TEST HELPERS
 
 void Settlement::adminDeposit(uint64_t user_id, int64_t amount) {
     Trade fake{};
     fake.seller_id = user_id;
     fake.price = amount;
     fake.qty = 1;
-
     fund_manager.creditSeller(&fake);
 }
 
@@ -99,10 +104,10 @@ void Settlement::settleTrade(
 
     t.checksum = t.trade_id ^ buyer ^ seller ^ symbol ^ price ^ qty;
 
-    processTrade(t);
+    processTrade(t, false);
 }
 
-// ---------------- EMS ----------------
+// EMS
 
 bool Settlement::reserveMargin(
     uint64_t user_id,

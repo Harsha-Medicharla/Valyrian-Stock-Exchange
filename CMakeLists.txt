@@ -81,16 +81,40 @@ endmacro()
 # 6. Executables & Integration Tests
 # ---------------------------------------------------------
 
-# The Smoke Test (To verify DB rows appear)
+# Smoke Test
 add_executable(smoke_test tests/smoke_test.cc)
-target_link_libraries(smoke_test PRIVATE settlement_lib ${PostgreSQL_LIBRARIES} Threads::Threads)
-add_executable(stress_test tests/stress_test.cc)
-target_link_libraries(stress_test PRIVATE settlement_lib ${PostgreSQL_LIBRARIES} Threads::Threads)
-# The Stress Test (For performance profiling)
-# add_executable(stress_test tests/stress_test.cc)
-# target_link_libraries(stress_test PRIVATE ems settlement_lib ${PostgreSQL_LIBRARIES} Threads::Threads)
+target_link_libraries(smoke_test 
+    PRIVATE 
+        settlement_lib 
+        Threads::Threads 
+        ${PostgreSQL_LIBRARIES}
+)
 
-# Standard GTests
+# Stress Test
+add_executable(stress_test tests/stress_test.cc)
+target_link_libraries(stress_test 
+    PRIVATE 
+        settlement_lib 
+        Threads::Threads 
+        ${PostgreSQL_LIBRARIES}
+)
+
+# 🔥 FULL PIPELINE TEST (FIXED)
+add_executable(full_pipeline_test tests/full_pipeline_test.cc)
+target_include_directories(full_pipeline_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(full_pipeline_test
+    PRIVATE
+        ems
+        settlement_lib
+        art
+        wal
+        Threads::Threads
+        ${PostgreSQL_LIBRARIES}
+)
+
+# ---------------------------------------------------------
+# 7. GTests
+# ---------------------------------------------------------
 add_valyrian_test(pipeline_integration_test tests/integration_test.cc)
 add_valyrian_test(ems_settlement_test tests/ems_settlement_integration_test.cc)
 add_valyrian_test(matching_engine_test tests/matching_engine_test.cc)

@@ -12,13 +12,8 @@ uint32_t TradeValidator::computeChecksum(Trade* t) {
 }
 
 bool TradeValidator::validate(Trade* t) {
-
     if (computeChecksum(t) != t->checksum)
         return false;
 
-    if (seen_ids.count(t->trade_id))
-        return false;
-
-    seen_ids.insert(t->trade_id);
     return true;
 }
