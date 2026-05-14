@@ -37,7 +37,8 @@ private:
     {
         std::vector<EventSPSC<OrderEvent>> orderQueues;
         std::vector<EventSPSC<TradeEvent>> tradeQueues;
-        std::vector<EventSPSC<DBEvent>> dbQueues;
+        std::vector<EventSPSC<DBEvent>> ingressDbQueues;
+        std::vector<EventSPSC<DBEvent>> engineDbQueues;
     } eventBus_;
 
     std::vector<EventSPSC<OrderEvent>> rejectOrderQueues_;
@@ -75,12 +76,14 @@ public:
 
         eventBus_.orderQueues.reserve(numSymbols_);
         eventBus_.tradeQueues.reserve(numSymbols_);
-        eventBus_.dbQueues.reserve(numSymbols_);
+        eventBus_.ingressDbQueues.reserve(numSymbols_);
+        eventBus_.engineDbQueues.reserve(numSymbols_);
         for (size_t i = 0; i < numSymbols_; ++i)
         {
             eventBus_.orderQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
             eventBus_.tradeQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
-            eventBus_.dbQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
+            eventBus_.ingressDbQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
+            eventBus_.engineDbQueues.emplace_back(EMSConfig::MPSC_BUFFER_SIZE);
         }
 
         rejectOrderQueues_.reserve(numWorkers_);
@@ -97,7 +100,7 @@ public:
                 static_cast<uint32_t>(i),
                 eventBus_.orderQueues[i],
                 eventBus_.tradeQueues[i],
-                eventBus_.dbQueues[i]);
+                eventBus_.engineDbQueues[i]);
         }
 
         workers_.reserve(numWorkers_);
@@ -110,7 +113,7 @@ public:
                 router_,
                 ringBuffers_,
                 rejectedStateBuffers_,
-                eventBus_.dbQueues,
+                eventBus_.ingressDbQueues,
                 &rejectOrderQueues_[i],
                 i,
                 marketState_));
@@ -138,9 +141,14 @@ public:
         return eventBus_.tradeQueues[symbolIdx];
     }
 
-    [[nodiscard]] EventSPSC<DBEvent> &dbQueue(size_t symbolIdx) noexcept
+    [[nodiscard]] EventSPSC<DBEvent> &ingressDbQueue(size_t symbolIdx) noexcept
     {
-        return eventBus_.dbQueues[symbolIdx];
+        return eventBus_.ingressDbQueues[symbolIdx];
+    }
+
+    [[nodiscard]] EventSPSC<DBEvent> &engineDbQueue(size_t symbolIdx) noexcept
+    {
+        return eventBus_.engineDbQueues[symbolIdx];
     }
 
     [[nodiscard]] EventSPSC<OrderEvent> &rejectQueue(size_t workerIdx) noexcept
@@ -149,6 +157,21 @@ public:
     }
 
     [[nodiscard]] size_t numSymbols() const noexcept { return numSymbols_; }
+
+    [[nodiscard]] std::vector<EventSPSC<TradeEvent>> &tradeQueues() noexcept
+    {
+        return eventBus_.tradeQueues;
+    }
+
+    [[nodiscard]] std::vector<EventSPSC<DBEvent>> &ingressDbQueues() noexcept
+    {
+        return eventBus_.ingressDbQueues;
+    }
+
+    [[nodiscard]] std::vector<EventSPSC<DBEvent>> &engineDbQueues() noexcept
+    {
+        return eventBus_.engineDbQueues;
+    }
 
     [[nodiscard]] BalanceCache &balanceCache() noexcept { return balanceCache_; }
 

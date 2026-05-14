@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include "../config/EMSConfig.h"
 #include "../../shared/types/CoreTypes.h"
 
 // In-memory balances (per user) and holdings (per user × symbol).

@@ -15,7 +15,8 @@
 class DBWriter
 {
 private:
-    std::vector<EventSPSC<DBEvent>> &dbQueues_;
+    std::vector<EventSPSC<DBEvent>> &ingressDbQueues_;
+    std::vector<EventSPSC<DBEvent>> &engineDbQueues_;
     uint32_t numSymbols_{0};
     BalanceCache &balanceCache_;
     PGWriter pgWriter_;
@@ -27,9 +28,13 @@ private:
     void flush();
 
 public:
-    DBWriter(std::vector<EventSPSC<DBEvent>> &dbQueues, uint32_t numSymbols, BalanceCache &balanceCache,
+    DBWriter(std::vector<EventSPSC<DBEvent>> &ingressDbQueues,
+             std::vector<EventSPSC<DBEvent>> &engineDbQueues,
+             uint32_t numSymbols,
+             BalanceCache &balanceCache,
              const std::string &pgConnString)
-        : dbQueues_(dbQueues),
+        : ingressDbQueues_(ingressDbQueues),
+          engineDbQueues_(engineDbQueues),
           numSymbols_(numSymbols),
           balanceCache_(balanceCache),
           pgWriter_(pgConnString)
@@ -37,6 +42,6 @@ public:
     }
 
     void start();
-    void stop();
+    void stop() noexcept;
     void join();
 };

@@ -4,21 +4,38 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads REQUIRED)
+include(FetchContent)
 
-if(DEFINED ENV{HOMEBREW_PREFIX})
-  list(APPEND CMAKE_PREFIX_PATH "$ENV{HOMEBREW_PREFIX}/opt/drogon" "$ENV{HOMEBREW_PREFIX}")
-endif()
-list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/drogon" "/usr/local/opt/drogon")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+set(BUILD_OBJECT_LIBS OFF CACHE BOOL "" FORCE)
+set(JSONCPP_WITH_TESTS OFF CACHE BOOL "" FORCE)
+set(JSONCPP_WITH_POST_BUILD_UNITTEST OFF CACHE BOOL "" FORCE)
+set(JSONCPP_WITH_PKGCONFIG_SUPPORT OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  jsoncpp_fc
+  GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
+  GIT_TAG 89e2973c754a9c02a49974d839779b151e95afd6
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(jsoncpp_fc)
+set(JSONCPP_INCLUDE_DIRS "${jsoncpp_fc_SOURCE_DIR}/include" CACHE PATH "" FORCE)
+set(JSONCPP_LIBRARIES jsoncpp_static CACHE STRING "" FORCE)
 
-find_package(Drogon CONFIG QUIET)
+set(BUILD_CTL OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_ORM OFF CACHE BOOL "" FORCE)
+set(BUILD_YAML_CONFIG OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  drogon_fc
+  GIT_REPOSITORY https://github.com/drogonframework/drogon.git
+  GIT_TAG e78690747858f49d7ea08002083420ff046d8785
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(drogon_fc)
 
-if(Drogon_FOUND)
-  add_executable(api_server_app main_drogon.cpp)
-  target_link_libraries(api_server_app PRIVATE Threads::Threads Drogon::Drogon)
-else()
-  message(STATUS "Drogon not found; building api_server_app as a configure-time stub (install drogon and reconfigure for HTTP server).")
-  add_executable(api_server_app main_stub.cpp)
-endif()
+add_executable(api_server_app main_drogon.cpp)
+target_link_libraries(api_server_app PRIVATE Threads::Threads Drogon::Drogon)
 
 target_include_directories(api_server_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}

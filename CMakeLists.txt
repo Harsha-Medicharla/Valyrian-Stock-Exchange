@@ -4,6 +4,8 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 project(vse LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(FETCHCONTENT_QUIET ON CACHE BOOL "" FORCE)
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "" FORCE)
 
 # Shared headers
 add_subdirectory(shared)
@@ -15,7 +17,7 @@ add_subdirectory(MatchingEngine)
 add_subdirectory(ems)
 
 # New modules
-add_subdirectory(trade_server)
 add_subdirectory(market_data)
 add_subdirectory(db)
 add_subdirectory(api_server)
+add_subdirectory(trade_server)

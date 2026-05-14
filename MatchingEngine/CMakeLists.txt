@@ -11,7 +11,7 @@ include(FetchContent)
 FetchContent_Declare(
   libart
   GIT_REPOSITORY https://github.com/armon/libart.git
-  GIT_TAG master
+  GIT_TAG 301046804af165269e37da6725f5a4aec9ecc881
 )
 FetchContent_GetProperties(libart)
 if(NOT libart_POPULATED)
@@ -40,7 +40,8 @@ enable_testing()
 FetchContent_Declare(
   rigtorp_spscqueue
   GIT_REPOSITORY https://github.com/rigtorp/SPSCQueue.git
-  GIT_TAG master
+  GIT_TAG 565a5149d54930463d58cb0f69b978d439555e66
+  GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(rigtorp_spscqueue)
 

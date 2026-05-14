@@ -40,10 +40,18 @@ void DBWriter::run()
         bool anyWork = false;
         for (uint32_t sym = 0; sym < numSymbols_; ++sym)
         {
-            while (DBEvent *ev = dbQueues_[sym].front())
+            while (DBEvent *ev = ingressDbQueues_[sym].front())
             {
                 batch_.push(*ev);
-                dbQueues_[sym].pop();
+                ingressDbQueues_[sym].pop();
+                anyWork = true;
+                if (batch_.shouldFlush())
+                    flush();
+            }
+            while (DBEvent *ev = engineDbQueues_[sym].front())
+            {
+                batch_.push(*ev);
+                engineDbQueues_[sym].pop();
                 anyWork = true;
                 if (batch_.shouldFlush())
                     flush();

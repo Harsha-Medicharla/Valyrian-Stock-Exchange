@@ -9,6 +9,7 @@ FetchContent_Declare(
   usockets_fc
   GIT_REPOSITORY https://github.com/uNetworking/uSockets.git
   GIT_TAG ${USOCKETS_TAG}
+  GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(usockets_fc)
 
@@ -16,8 +17,17 @@ FetchContent_Declare(
   uwebsockets_fc
   GIT_REPOSITORY https://github.com/uNetworking/uWebSockets.git
   GIT_TAG ${UWEBSOCKETS_TAG}
+  GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(uwebsockets_fc)
+
+FetchContent_Declare(
+  zlib_fc
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG 570720b0c24f9686c33f35a1b3165c1f568b96be
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(zlib_fc)
 
 set(USOCK_SRC_DIR "${usockets_fc_SOURCE_DIR}/src")
 
@@ -65,10 +75,7 @@ endif()
 
 target_link_libraries(usockets_vse PUBLIC Threads::Threads)
 
-find_package(ZLIB)
-if(ZLIB_FOUND)
-  target_link_libraries(usockets_vse PUBLIC ZLIB::ZLIB)
-endif()
+target_link_libraries(usockets_vse PUBLIC zlibstatic)
 
 if(UNIX AND NOT APPLE)
   target_link_libraries(usockets_vse PUBLIC z)
