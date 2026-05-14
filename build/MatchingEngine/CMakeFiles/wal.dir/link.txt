@@ -1,2 +1,0 @@
-/usr/bin/ar qc libwal.a CMakeFiles/wal.dir/wal/WAL.cpp.o
-/usr/bin/ranlib libwal.a

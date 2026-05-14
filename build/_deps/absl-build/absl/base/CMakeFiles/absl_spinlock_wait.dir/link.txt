@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -o libabsl_spinlock_wait.dylib -install_name @rpath/libabsl_spinlock_wait.dylib CMakeFiles/absl_spinlock_wait.dir/internal/spinlock_wait.cc.o
