@@ -12,30 +12,42 @@
 
 // Per-user rate limiter with epoch-based lazy decay.
 //
-// Design:
-//   - Each user has a cache-line-sized entry holding a count and an epoch.
-//     alignas(64) eliminates false sharing between workers on different users.
-//   - A shared currentEpoch_ counter is advanced at most once per second.
-//     Any worker can advance it via a single CAS; all others see the new value
-//     immediately and reset only their current user's counter — O(1) per order.
-//   - decay() and the opsSinceDecay_ machinery in IngressWorker are removed.
-//     There is no periodic stall anywhere.
+// Layout:
+//   Users are packed 4 per cache line (UserGroup). Each slot holds a count
+//   and an epoch as 32-bit atomics. The epoch is advanced at most once per
+//   second by any worker via a single CAS; each user's counter is lazily
+//   reset the first time they submit an order after a new epoch begins.
+//   This keeps the hot path at O(1) with no periodic stall anywhere.
+//
+// Memory: (MAX_USERS / 4) groups × 64B = MAX_USERS × 16B.
+//   With MAX_USERS = 131072: 2MB total.
+//
+// False sharing: occurs only between users whose userId maps to the same
+//   group (4 users share a cache line). With uniform userId distribution
+//   this is negligible. Pathological cases (8 workers all hitting the same
+//   4 users) still produce true sharing, which is inherent to the semantics.
 //
 // Determinism note: epoch advancement is wall-clock driven, so accept/reject
-// decisions for borderline users are not reproducible under WAL replay at a
-// different speed. This is acceptable: the rate limiter is explicitly approximate
-// and the matching engine's order sequence remains fully deterministic.
+//   decisions for borderline users are not reproducible under WAL replay at
+//   a different speed. This is acceptable: the rate limiter is approximate
+//   and the matching engine's order sequence remains fully deterministic.
 class RateLimiter
 {
 private:
-    struct alignas(64) UserEntry
+    struct alignas(64) UserGroup
     {
-        std::atomic<uint32_t> count{0};
-        std::atomic<uint32_t> epoch{0};
+        struct Slot {
+            std::atomic<uint32_t> count{0};
+            std::atomic<uint32_t> epoch{0};
+        } slots[4];
+        // 4 × 8B = 32B used, 32B implicit padding to fill the cache line.
     };
 
+    static constexpr std::size_t kGroupSize  = 4;
+    static constexpr std::size_t kNumGroups  = EMSConfig::MAX_USERS / kGroupSize;
+
     uint32_t maxInWindow_;
-    std::unique_ptr<UserEntry[]> entries_;
+    std::unique_ptr<UserGroup[]> groups_;
 
     alignas(64) std::atomic<uint64_t> currentEpoch_{0};
     alignas(64) std::atomic<uint64_t> epochStartMs_{0};
@@ -45,18 +57,15 @@ private:
     {
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
-        return static_cast<uint64_t>(ts.tv_sec) * 1000ULL + static_cast<uint64_t>(ts.tv_nsec) / 1'000'000ULL;
+        return static_cast<uint64_t>(ts.tv_sec) * 1000ULL
+             + static_cast<uint64_t>(ts.tv_nsec) / 1'000'000ULL;
     }
 
     inline void maybeAdvanceEpoch() noexcept
     {
-        // Only touch the system clock every 1024 calls
-        // This reduces vDSO/syscall overhead by 99.9%
         if ((globalOps_.fetch_add(1, std::memory_order_relaxed) & 1023) != 0)
-        {
             return;
-        }
-        const uint64_t now = coarseTimeMs();
+        const uint64_t now   = coarseTimeMs();
         const uint64_t epoch = currentEpoch_.load(std::memory_order_relaxed);
         if (now - epochStartMs_.load(std::memory_order_relaxed) < 1000ULL)
             return;
@@ -70,25 +79,30 @@ private:
         }
     }
 
+    inline UserGroup::Slot& getSlot(uint32_t userId) noexcept
+    {
+        const std::size_t idx   = static_cast<std::size_t>(userId) % EMSConfig::MAX_USERS;
+        const std::size_t group = idx / kGroupSize;
+        const std::size_t slot  = idx % kGroupSize;
+        return groups_[group].slots[slot];
+    }
+
 public:
     inline explicit RateLimiter(
         uint32_t maxInWindow = static_cast<uint32_t>(EMSConfig::MAX_ORDERS_PER_SEC)) noexcept
         : maxInWindow_(maxInWindow),
-          entries_(std::make_unique<UserEntry[]>(EMSConfig::MAX_USERS))
+          groups_(std::make_unique<UserGroup[]>(kNumGroups))   // was MAX_USERS — bug fix
     {
         epochStartMs_.store(coarseTimeMs(), std::memory_order_relaxed);
     }
 
-    // Returns true and increments the counter if this user is under the limit.
-    // Returns false and leaves the counter unchanged if the limit is reached.
     inline bool checkAndIncrement(uint32_t userId) noexcept
     {
         maybeAdvanceEpoch();
 
         const uint64_t epoch = currentEpoch_.load(std::memory_order_relaxed);
-        UserEntry &entry = entries_[static_cast<std::size_t>(userId) % EMSConfig::MAX_USERS];
+        UserGroup::Slot& entry = getSlot(userId);
 
-        // Lazily reset this user's counter if their epoch is stale.
         if (entry.epoch.load(std::memory_order_relaxed) != static_cast<uint32_t>(epoch))
         {
             entry.count.store(0, std::memory_order_relaxed);

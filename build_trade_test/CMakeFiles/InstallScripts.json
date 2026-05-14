@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build_trade_test/cmake_install.cmake",
+		"/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build_trade_test/_deps/rigtorp_spscqueue-build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

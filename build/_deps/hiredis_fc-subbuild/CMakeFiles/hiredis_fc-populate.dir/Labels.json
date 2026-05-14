@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/CMakeFiles/hiredis_fc-populate"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/CMakeFiles/hiredis_fc-populate.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/CMakeFiles/hiredis_fc-populate-complete.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-build.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-configure.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-download.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-install.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-mkdir.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-patch.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-test.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/hiredis_fc-subbuild/hiredis_fc-populate-prefix/src/hiredis_fc-populate-stamp/hiredis_fc-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"hiredis_fc-populate"
+		],
+		"name" : "hiredis_fc-populate"
+	}
+}

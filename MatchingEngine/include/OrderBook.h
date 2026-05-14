@@ -10,8 +10,15 @@ inline TimeStamp getCurrentWallTime()
   return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 }
 
+namespace vse::test
+{
+struct OrderBookPeer;
+}
+
 class OrderBook
 {
+  friend struct vse::test::OrderBookPeer;
+
 private:
   OrderPool order_pool;
   PriceLevelPool price_level_pool;
@@ -140,6 +147,16 @@ public:
       return nullptr;
     }
     return it->second;
+  }
+
+  [[nodiscard]] inline Price bestBidPrice() const noexcept
+  {
+    return best_bid ? best_bid->price : 0;
+  }
+
+  [[nodiscard]] inline Price bestAskPrice() const noexcept
+  {
+    return best_ask ? best_ask->price : 0;
   }
 
 private:

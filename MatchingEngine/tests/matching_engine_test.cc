@@ -1,16 +1,10 @@
 #include <gtest/gtest.h>
-#include "MatchingEngine.h"
+#include "VseTestPeer.h"
 
 static std::string walPath(int id) {
     return "test_wal_" + std::to_string(id);
 }
 
-
-
-/*
-    before running this file,
- - make everything public in OrderBook.h and MatchingEngine.h
-*/
 
 
 
@@ -77,7 +71,8 @@ TEST(PoolTest, DeallocateNullptrThrowsLogicError) {
 // Insert + Find
 TEST(ARTTest, InsertAndFind) {
     AdaptiveRadixTree tree;
-    PriceLevel *level;
+    PriceLevel level_mem{};
+    PriceLevel *level = &level_mem;
     tree.insert(10, level);
     auto val = tree.find(10);
 
@@ -99,7 +94,8 @@ TEST(ARTTest, FindMissingKeyReturnsNull) {
 // Erase removes key
 TEST(ARTTest, EraseRemovesKey) {
     AdaptiveRadixTree tree;
-    PriceLevel *level;
+    PriceLevel level_mem{};
+    PriceLevel *level = &level_mem;
     tree.insert(5, level);
     tree.erase(5);
 
@@ -111,9 +107,10 @@ TEST(ARTTest, EraseRemovesKey) {
 // Multiple inserts preserve correctness
 TEST(ARTTest, MultipleKeysWork) {
     AdaptiveRadixTree tree;
-    PriceLevel *level1;
-    PriceLevel *level2;
-    PriceLevel *level3;
+    PriceLevel m1{}, m2{}, m3{};
+    PriceLevel *level1 = &m1;
+    PriceLevel *level2 = &m2;
+    PriceLevel *level3 = &m3;
     tree.insert(1, level1);
     tree.insert(2, level2);
     tree.insert(3, level3);
@@ -144,11 +141,11 @@ TEST(OrderBookTest, FindOrderById) {
 TEST(OrderBookTest, GetOrCreatePriceLevel) {
     OrderBook *book = new OrderBook();
 
-    PriceLevel* level = book->getOrCreatePriceLevel(Side::BUY, 10);
+    PriceLevel* level = vse::test::OrderBookPeer::getOrCreate(*book, Side::BUY, 10);
     ASSERT_NE(level, nullptr);
 
-    EXPECT_TRUE(book->buy_book.size() == 1);
-    EXPECT_TRUE(book->buy_book.find(10) == level);
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(*book).size() == 1);
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(*book).find(10) == level);
 }
 
 
@@ -157,8 +154,8 @@ TEST(OrderBookTest, GetOrCreatePriceLevel) {
 TEST(OrderBookTest, GetPriceLevel) {
     OrderBook *book = new OrderBook();
 
-    book->getOrCreatePriceLevel(Side::SELL, 20);
-    PriceLevel* level = book->getPriceLevel(Side::SELL, 20);
+    vse::test::OrderBookPeer::getOrCreate(*book, Side::SELL, 20);
+    PriceLevel* level = vse::test::OrderBookPeer::getLevel(*book, Side::SELL, 20);
 
     ASSERT_NE(level, nullptr);
     EXPECT_EQ(level->price, 20);
@@ -170,12 +167,12 @@ TEST(OrderBookTest, GetPriceLevel) {
 TEST(OrderBookTest, RemovePriceLevelIfEmpty) {
     OrderBook *book = new OrderBook();
 
-    PriceLevel* level = book->getOrCreatePriceLevel(Side::BUY, 30);
+    PriceLevel* level = vse::test::OrderBookPeer::getOrCreate(*book, Side::BUY, 30);
     ASSERT_NE(level, nullptr);
 
-    book->removePriceLevelIfEmpty(Side::BUY, 30);
+    vse::test::OrderBookPeer::removeIfEmpty(*book, Side::BUY, 30);
 
-    EXPECT_TRUE(book->buy_book.empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(*book).empty());
 }
 
 
@@ -188,15 +185,15 @@ TEST(OrderStateTest, UpdateOrderState) {
 
     o.quantity = 100;
     o.remaining = 100;
-    engine->updateOrderState(&o);
+    vse::test::MatchingEnginePeer::updateOrderState(*engine, &o);
     EXPECT_EQ(o.state, OrderState::NEW);
 
     o.remaining = 50;
-    engine->updateOrderState(&o);
+    vse::test::MatchingEnginePeer::updateOrderState(*engine, &o);
     EXPECT_EQ(o.state, OrderState::PARTIALLY_FILLED);
 
     o.remaining = 0;
-    engine->updateOrderState(&o);
+    vse::test::MatchingEnginePeer::updateOrderState(*engine, &o);
     EXPECT_EQ(o.state, OrderState::FILLED);
 }
 
@@ -249,7 +246,7 @@ TEST(OrderBookTest, ConsumeOrder) {
     o.remaining = 100;
 
     // Create price level first
-    PriceLevel* level = book->getOrCreatePriceLevel(o.side, o.price);
+    PriceLevel* level = vse::test::OrderBookPeer::getOrCreate(*book, o.side, o.price);
     level->aggregated_qty = 100;
 
     book->consumeOrder(&o, 40);
@@ -276,8 +273,8 @@ TEST(OrderBookTest, InsertOrderCreatesPriceLevel) {
 
     book->insertOrder(o);
 
-    ASSERT_EQ(book->buy_book.size(), 1);
-    EXPECT_EQ(book->buy_book.find(10)->aggregated_qty, 100);
+    ASSERT_EQ(vse::test::OrderBookPeer::buyBook(*book).size(), 1);
+    EXPECT_EQ(vse::test::OrderBookPeer::buyBook(*book).find(10)->aggregated_qty, 100);
 }
 
 
@@ -292,7 +289,7 @@ TEST(OrderBookTest, RemoveOrderDeletesPriceLevel) {
     book->insertOrder(o);
     book->removeOrder(o);
 
-    EXPECT_TRUE(book->sell_book.empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(*book).empty());
 }
 
 
@@ -322,7 +319,7 @@ TEST(MatchingEngineUnitTest, MatchStopsOnNoCross) {
 
     engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
 
-    Order* buy = engine->order_book.findOrder(1);
+    Order* buy = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(buy, nullptr);
     EXPECT_EQ(buy->remaining, 100);
 }
@@ -337,7 +334,7 @@ TEST(MatchingEngineUnitTest, ExecuteTradeDoesNotMutateOrders) {
     a.remaining = 50;
     b.remaining = 50;
 
-    engine->executeTrade(&a, &b, 10, 20);
+    vse::test::MatchingEnginePeer::executeTrade(*engine, &a, &b, 10, 20);
 
     EXPECT_EQ(a.remaining, 50);
     EXPECT_EQ(b.remaining, 50);
@@ -352,7 +349,7 @@ TEST(MatchingEngineUnitTest, OnNewOrderRestingLimit) {
     bool ok = engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
 
     EXPECT_TRUE(ok);
-    EXPECT_EQ(engine->order_book.buy_book.size(), 1);
+    EXPECT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 }
 
 
@@ -361,7 +358,7 @@ TEST(MatchingEngineUnitTest, OnNewOrderRestingLimit) {
 TEST(MatchingEngineUnitTest, CancelFilledOrderFails) {
     MatchingEngine *engine = new MatchingEngine(11);
 
-    Order* o = engine->order_book.requestAllocationOfOrder();
+    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).requestAllocationOfOrder();
     *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
 
     bool ok = engine->onCancelOrder(1);
@@ -382,7 +379,7 @@ TEST(MatchingEngineUnitTest, ModifyNonExistentOrder) {
 TEST(MatchingEngineTest, ModifyFilledOrderFails) {
     MatchingEngine *engine = new MatchingEngine(13);
 
-    Order* o = engine->order_book.requestAllocationOfOrder();
+    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).requestAllocationOfOrder();
     *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
 
     EXPECT_FALSE(engine->onModifyOrder(1, 20, 100));
@@ -400,7 +397,7 @@ TEST(MatchingEngineTest, ModifyReduceQuantitySamePrice) {
     bool ok = engine->onModifyOrder(1, 10, 60);
     EXPECT_TRUE(ok);
 
-    Order* updated = engine->order_book.findOrder(1);
+    Order* updated = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(updated, nullptr);
     EXPECT_EQ(updated->quantity, 60);
     EXPECT_EQ(updated->remaining, 60);
@@ -417,8 +414,8 @@ TEST(MatchingEngineTest, ModifyPriceCausesReinsert) {
     bool ok = engine->onModifyOrder(1, 20, 200);
     EXPECT_TRUE(ok);
 
-    EXPECT_EQ(engine->order_book.buy_book.size(), 1);
-    EXPECT_NE(engine->order_book.buy_book.find(20), nullptr);
+    EXPECT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
+    EXPECT_NE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(20), nullptr);
 }
 
 
@@ -440,12 +437,12 @@ What this test guarantees
 TEST(MatchingEngineTest, EmptyBookOnStartup) {
     MatchingEngine *engine = new MatchingEngine(16);
     // Buy & sell ladders must be empty
-    EXPECT_TRUE(engine->order_book.buy_book.empty());
-    EXPECT_TRUE(engine->order_book.sell_book.empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
 
     // No best bid / ask
-    EXPECT_TRUE(engine->order_book.best_bid == nullptr);
-    EXPECT_TRUE(engine->order_book.best_ask == nullptr);
+    EXPECT_TRUE(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*engine)) == nullptr);
+    EXPECT_TRUE(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)) == nullptr);
 }
 
 
@@ -464,18 +461,18 @@ TEST(MatchingEngineTest, InsertBuyLimitNoMatch) {
 
     engine->onNewOrder(1,42,Side::BUY,OrderType::LIMIT,10,100,1);
 
-    ASSERT_EQ(engine->order_book.buy_book.size(), 1);
+    ASSERT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
-    Order* o = engine->order_book.findOrder(1);
+    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(o, nullptr);
 
-    PriceLevel* level = engine->order_book.buy_book.find(10);
+    PriceLevel* level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 100);
     EXPECT_EQ(level->head, o);
     EXPECT_EQ(level->tail, o);
-    EXPECT_EQ(engine->order_book.best_bid, level);
+    EXPECT_EQ(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
 
@@ -492,18 +489,18 @@ TEST(MatchingEngineTest, InsertSellLimitNoMatch) {
 
     engine->onNewOrder(2,99,Side::SELL,OrderType::LIMIT,20,150,1);
 
-    ASSERT_EQ(engine->order_book.sell_book.size(), 1);
+    ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
-    Order* o = engine->order_book.findOrder(2);
+    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
     ASSERT_NE(o, nullptr);
 
-    PriceLevel* level = engine->order_book.sell_book.find(20);
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(20);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 150);
     EXPECT_EQ(level->head, o);
     EXPECT_EQ(level->tail, o);
-    EXPECT_EQ(engine->order_book.best_ask, level);
+    EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
 
@@ -523,14 +520,14 @@ TEST(MatchingEngineTest, ExactPriceCrossFullFill) {
     engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
     engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,100,2);
 
-    EXPECT_TRUE(engine->order_book.buy_book.empty());
-    EXPECT_TRUE(engine->order_book.sell_book.empty());
-    EXPECT_TRUE(engine->order_book.best_bid == nullptr);
-    EXPECT_TRUE(engine->order_book.best_ask == nullptr);
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*engine)) == nullptr);
+    EXPECT_TRUE(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)) == nullptr);
 
     // FILLED orders must not exist anymore (deallocated)
-    EXPECT_TRUE(engine->order_book.findOrder(1) == nullptr);
-    EXPECT_TRUE(engine->order_book.findOrder(2) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 }
 
 
@@ -552,22 +549,22 @@ TEST(MatchingEngineTest, PartialFillSingleLevel) {
     engine->onNewOrder(2, 20, Side::BUY, OrderType::LIMIT, 10, 100, 2);
 
     // BUY must be deallocated (FILLED)
-    EXPECT_TRUE(engine->order_book.findOrder(2) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 
     // SELL must still exist
-    Order* sell = engine->order_book.findOrder(1);
+    Order* sell = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(sell, nullptr);
     EXPECT_EQ(sell->remaining, 100);
 
-    ASSERT_EQ(engine->order_book.sell_book.size(), 1);
-    PriceLevel* level = engine->order_book.sell_book.find(10);
+    ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 100);
     EXPECT_EQ(level->head, sell);
     EXPECT_EQ(level->tail, sell);
-    EXPECT_EQ(engine->order_book.best_ask, level);
-    EXPECT_TRUE(engine->order_book.buy_book.empty());
+    EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
 }
 
 
@@ -588,18 +585,18 @@ TEST(MatchingEngineTest, FIFOAtSamePriceLevel) {
     engine->onNewOrder(3, 30, Side::BUY,  OrderType::LIMIT, 10, 150, 3);
 
     // First SELL must be gone
-    EXPECT_TRUE(engine->order_book.findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 
     // BUY must be gone
-    EXPECT_TRUE(engine->order_book.findOrder(3) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(3) == nullptr);
 
     // Second SELL must remain
-    Order* sell2 = engine->order_book.findOrder(2);
+    Order* sell2 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
     ASSERT_NE(sell2, nullptr);
     EXPECT_EQ(sell2->remaining, 50);
 
-    ASSERT_EQ(engine->order_book.sell_book.size(), 1);
-    PriceLevel* level = engine->order_book.sell_book.find(10);
+    ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 50);
@@ -624,22 +621,22 @@ TEST(MatchingEngineTest, PricePriorityAcrossLevels) {
     engine->onNewOrder(3, 30, Side::BUY,  OrderType::LIMIT, 10, 150, 3);
 
     // SELL @ 9 must be gone
-    EXPECT_TRUE(engine->order_book.findOrder(2) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 
     // BUY must be gone
-    EXPECT_TRUE(engine->order_book.findOrder(3) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(3) == nullptr);
 
     // SELL @ 10 must remain
-    Order* sell10 = engine->order_book.findOrder(1);
+    Order* sell10 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(sell10, nullptr);
     EXPECT_EQ(sell10->remaining, 50);
 
-    ASSERT_EQ(engine->order_book.sell_book.size(), 1);
-    PriceLevel* level = engine->order_book.sell_book.find(10);
+    ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 50);
-    EXPECT_EQ(engine->order_book.best_ask, level);
+    EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
 
@@ -661,22 +658,22 @@ TEST(MatchingEngineTest, MarketOrderSweep) {
     engine->onNewOrder(3, 30, Side::BUY, OrderType::MARKET, 0, 150, 3);
 
     // Market order must be deallocated
-    EXPECT_TRUE(engine->order_book.findOrder(3) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(3) == nullptr);
 
     // SELL @10 must be gone
-    EXPECT_TRUE(engine->order_book.findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 
     // SELL @11 must remain partially filled
-    Order* sell11 = engine->order_book.findOrder(2);
+    Order* sell11 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
     ASSERT_NE(sell11, nullptr);
     EXPECT_EQ(sell11->remaining, 50);
 
-    ASSERT_EQ(engine->order_book.sell_book.size(), 1);
-    PriceLevel* level = engine->order_book.sell_book.find(11);
+    ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(11);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 50);
-    EXPECT_EQ(engine->order_book.best_ask, level);
+    EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
 
@@ -701,16 +698,16 @@ TEST(MatchingEngineTest, CancelRestingOrder) {
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::LIMIT, 10, 100, 1);
 
-    ASSERT_EQ(engine->order_book.buy_book.size(), 1);
+    ASSERT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
     engine->onCancelOrder(1);
 
-    EXPECT_TRUE(engine->order_book.buy_book.empty());
-    EXPECT_TRUE(engine->order_book.best_bid == nullptr);
-    EXPECT_TRUE(engine->order_book.sell_book.empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*engine)) == nullptr);
+    EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
 
     // Order must be removed
-    EXPECT_TRUE(engine->order_book.findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 }
 
 
@@ -727,15 +724,15 @@ TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::LIMIT, 10, 100, 1);
 
-    ASSERT_EQ(engine->order_book.buy_book.size(), 1);
+    ASSERT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
     engine->onModifyOrder(1, 11, 200);
 
-    EXPECT_TRUE(engine->order_book.buy_book.find(10) == nullptr);
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10) == nullptr);
 
-    ASSERT_EQ(engine->order_book.buy_book.size(), 1);
+    ASSERT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
-    PriceLevel* level = engine->order_book.buy_book.find(11);
+    PriceLevel* level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(11);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 200);
@@ -745,7 +742,7 @@ TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
 
     EXPECT_EQ(modified->order_id, 1);
     EXPECT_EQ(modified->remaining, 200);
-    EXPECT_EQ(engine->order_book.best_bid, level);
+    EXPECT_EQ(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
 
@@ -754,8 +751,8 @@ TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
 TEST(MatchingEngineTest, CancelNonExistentOrder) {
     MatchingEngine *engine = new MatchingEngine(26);
     engine->onCancelOrder(999);  // should not crash
-    EXPECT_TRUE(engine->order_book.buy_book.empty());
-    EXPECT_TRUE(engine->order_book.sell_book.empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
 }
 
 
@@ -766,11 +763,11 @@ TEST(MatchingEngineTest, MarketOrderOnEmptyBook) {
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::MARKET, 0, 100, 1);
 
-    EXPECT_TRUE(engine->order_book.buy_book.empty());
-    EXPECT_TRUE(engine->order_book.sell_book.empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
 
     // Must be immediately deallocated
-    EXPECT_TRUE(engine->order_book.findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 }
 
 
@@ -1047,13 +1044,13 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     MatchingEngine *recovered = new MatchingEngine(29);
 
     // BUY side must be empty
-    EXPECT_TRUE(recovered->order_book.buy_book.empty());
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).empty());
 
     // SELL side must have exactly one level (@10)
-    ASSERT_EQ(recovered->order_book.sell_book.size(), 1);
+    ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).size(), 1);
 
     PriceLevel* level =
-        recovered->order_book.sell_book.find(10);
+        vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
 
     ASSERT_NE(level, nullptr);
 
@@ -1066,8 +1063,8 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     EXPECT_EQ(order->order_id, 1);
     EXPECT_EQ(order->remaining, 30);
 
-    EXPECT_EQ(recovered->order_book.best_ask, level);
-    EXPECT_TRUE(recovered->order_book.best_bid == nullptr);
+    EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*recovered)), level);
+    EXPECT_TRUE(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*recovered)) == nullptr);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1081,12 +1078,12 @@ TEST(MatchingEngineNewTest, SelfTradePreventionCancelsIncoming) {
     engine->onNewOrder(2, 42, Side::BUY, OrderType::LIMIT, 10, 100, 2);
 
     // No match should occur
-    PriceLevel* level = engine->order_book.sell_book.find(10);
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
     EXPECT_EQ(level->aggregated_qty, 100);
 
     // Incoming order must be deallocated
-    EXPECT_TRUE(engine->order_book.findOrder(2) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 }
 
 TEST(MatchingEngineNewTest, FilledOrderImmediateDeallocation) {
@@ -1095,8 +1092,8 @@ TEST(MatchingEngineNewTest, FilledOrderImmediateDeallocation) {
     engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
     engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,100,2);
 
-    EXPECT_TRUE(engine->order_book.findOrder(1) == nullptr);
-    EXPECT_TRUE(engine->order_book.findOrder(2) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 }
 
 TEST(MatchingEngineNewTest, MarketOrderImmediateDeallocation) {
@@ -1104,8 +1101,8 @@ TEST(MatchingEngineNewTest, MarketOrderImmediateDeallocation) {
 
     engine->onNewOrder(1,10,Side::BUY,OrderType::MARKET,0,100,1);
 
-    EXPECT_TRUE(engine->order_book.buy_book.empty());
-    EXPECT_TRUE(engine->order_book.findOrder(1) == nullptr);
+    EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
+    EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 }
 
 TEST(MatchingEngineNewTest, WALRecoveryInternalOnNewOrderPath) {
@@ -1117,9 +1114,9 @@ TEST(MatchingEngineNewTest, WALRecoveryInternalOnNewOrderPath) {
 
     MatchingEngine *recovered = new MatchingEngine(103);
 
-    ASSERT_EQ(recovered->order_book.sell_book.size(), 1);
+    ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).size(), 1);
 
-    PriceLevel* level = recovered->order_book.sell_book.find(10);
+    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 30);

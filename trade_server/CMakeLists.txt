@@ -1,0 +1,98 @@
+cmake_minimum_required(VERSION 3.14)
+project(vse_trade_server LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Threads REQUIRED)
+
+include(FetchContent)
+
+FetchContent_Declare(
+  rigtorp_spscqueue
+  GIT_REPOSITORY https://github.com/rigtorp/SPSCQueue.git
+  GIT_TAG master
+)
+FetchContent_MakeAvailable(rigtorp_spscqueue)
+
+FetchContent_Declare(
+  disruptorplus
+  GIT_REPOSITORY https://github.com/lewissbaker/disruptorplus.git
+  GIT_TAG master
+)
+FetchContent_MakeAvailable(disruptorplus)
+
+set(DISRUPTOR_MT_CLAIM_HEADER
+  "${disruptorplus_SOURCE_DIR}/include/disruptorplus/multi_threaded_claim_strategy.hpp")
+if(EXISTS "${DISRUPTOR_MT_CLAIM_HEADER}")
+  file(READ "${DISRUPTOR_MT_CLAIM_HEADER}" _dp_mt_claim_content)
+  string(REPLACE
+    "std::min(count, static_cast<sequence_t>(diff + 1));"
+    "std::min(count, static_cast<size_t>(diff + 1));"
+    _dp_mt_claim_content
+    "${_dp_mt_claim_content}")
+  file(WRITE "${DISRUPTOR_MT_CLAIM_HEADER}" "${_dp_mt_claim_content}")
+endif()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/UsocketsUWebSockets.cmake)
+
+FetchContent_Declare(
+  hiredis_fc
+  GIT_REPOSITORY https://github.com/redis/hiredis.git
+  GIT_TAG v1.2.0
+)
+FetchContent_MakeAvailable(hiredis_fc)
+FetchContent_GetProperties(hiredis_fc SOURCE_DIR hiredis_fc_SOURCE_DIR)
+
+FetchContent_Declare(
+  vse_flatbuffers_headers
+  GIT_REPOSITORY https://github.com/google/flatbuffers.git
+  GIT_TAG v24.3.25
+)
+FetchContent_GetProperties(vse_flatbuffers_headers)
+if(NOT vse_flatbuffers_headers_POPULATED)
+  FetchContent_Populate(vse_flatbuffers_headers)
+endif()
+
+add_executable(trade_server_app
+  main.cpp
+  network/WebSocketServer.cpp
+)
+
+target_include_directories(trade_server_app PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/network
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/ems
+  ${rigtorp_spscqueue_SOURCE_DIR}/include
+  ${disruptorplus_SOURCE_DIR}/include
+  ${CMAKE_SOURCE_DIR}/MatchingEngine/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/protocol
+  "${vse_flatbuffers_headers_SOURCE_DIR}/include"
+  "${hiredis_fc_SOURCE_DIR}"
+)
+
+target_link_libraries(trade_server_app PRIVATE
+  Threads::Threads
+  wal
+  vse_shared
+  uwebsockets_vse
+  hiredis::hiredis
+)
+
+target_compile_definitions(trade_server_app PRIVATE VSE_HAVE_HIREDIS=1)
+
+target_compile_options(trade_server_app PRIVATE -O2 -pthread)
+
+set(WIRE_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/protocol/WireTypes.fbs")
+set(WIRE_GEN "${CMAKE_CURRENT_SOURCE_DIR}/protocol/WireTypes_generated.h")
+find_program(FLATC flatc)
+if(FLATC)
+  add_custom_command(
+    OUTPUT "${WIRE_GEN}"
+    COMMAND "${FLATC}" --cpp -o "${CMAKE_CURRENT_SOURCE_DIR}/protocol" "${WIRE_SCHEMA}"
+    DEPENDS "${WIRE_SCHEMA}"
+    COMMENT "flatc WireTypes.fbs (optional)"
+    VERBATIM)
+  add_custom_target(trade_server_wiretypes DEPENDS "${WIRE_GEN}")
+  add_dependencies(trade_server_app trade_server_wiretypes)
+endif()

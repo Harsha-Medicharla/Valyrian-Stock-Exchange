@@ -10,7 +10,7 @@
 #include <sched.h>
 #include "../utils/SpinWait.h"
 #include "../types/OrderSlot.h"
-#include "MatchingEngine.h"
+#include "../../MatchingEngine/include/MatchingEngine.h"
 
 class Dispatcher
 {
@@ -54,8 +54,26 @@ private:
                     continue;
                 }
 
-                engine_.onNewOrder(
-                    slot);
+                if (slot.cancel_flag != 0)
+                {
+                    engine_.onCancelOrder(slot.order_id);
+                }
+                else if (slot.modify_flag != 0)
+                {
+                    engine_.onModifyOrder(slot.order_id, static_cast<Price>(slot.price),
+                                          static_cast<Qty>(slot.qty));
+                }
+                else
+                {
+                    engine_.onNewOrder(
+                        slot.order_id,
+                        static_cast<UserId>(slot.user_id),
+                        static_cast<Side>(slot.side),
+                        static_cast<OrderType>(slot.type),
+                        static_cast<Price>(slot.price),
+                        static_cast<Qty>(slot.qty),
+                        static_cast<TimeStamp>(slot.timestamp));
+                }
                 ring_.releaseSlot(ringSeq);
                 ++nextServerSequence_;
                 continue;

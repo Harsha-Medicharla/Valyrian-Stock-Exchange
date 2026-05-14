@@ -4,8 +4,9 @@
 #include "core/EMSCore.h"
 #include "core/RejectHandler.h"
 #include "types/Common.h"
+#include "types/RawOrder.h"
 
-static void onRejectCallback(uint32_t /*userId*/, RejectReason /*reason*/) noexcept
+static void onRejectCallback(const RawOrder * /*order*/, RejectReason /*reason*/) noexcept
 {
     // Intentionally empty: stub for production integration.
 }

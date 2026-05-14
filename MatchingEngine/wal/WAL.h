@@ -1,9 +1,10 @@
-#ifndef WAL_H
-#define WAL_H
+#pragma once
 
 #include <fstream>
-#include <string>
 #include <functional>
+#include <string>
+#include <cstdint>
+
 #include "../include/OrderBook.h"
 
 enum class WalAction : uint8_t
@@ -47,6 +48,8 @@ private:
 
     LogEntry reusableEntry;
 
+    uint64_t lastSeq_{0};
+
     void writeEntry();
 
 public:
@@ -60,6 +63,6 @@ public:
     void logTrade(OrderId aggId, OrderId restId, Price price, Qty qty);
 
     void recover(std::function<void(const LogEntry &)> visitor);
-};
 
-#endif
+    [[nodiscard]] uint64_t lastSequence() const noexcept { return lastSeq_; }
+};

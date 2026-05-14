@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/CMakeFiles/uwebsockets_fc-populate"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/CMakeFiles/uwebsockets_fc-populate.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/CMakeFiles/uwebsockets_fc-populate-complete.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-build.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-configure.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-download.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-install.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-mkdir.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-patch.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-test.rule"
+		},
+		{
+			"file" : "/Users/chandangowdac/Documents/mp[3]/projects/vse/Valyrian_Stock_Exchange/build/_deps/uwebsockets_fc-subbuild/uwebsockets_fc-populate-prefix/src/uwebsockets_fc-populate-stamp/uwebsockets_fc-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"uwebsockets_fc-populate"
+		],
+		"name" : "uwebsockets_fc-populate"
+	}
+}

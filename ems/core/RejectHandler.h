@@ -3,10 +3,12 @@
 #include <cstdint>
 #include "../types/Common.h"
 
+struct RawOrder;
+
 class RejectHandler
 {
 public:
-    using RejectCallback = void (*)(uint32_t userId, RejectReason reason) noexcept;
+    using RejectCallback = void (*)(const RawOrder *order, RejectReason reason) noexcept;
 
     // Register a global reject callback.
     // Default is nullptr (no-op).
@@ -16,11 +18,11 @@ public:
     }
 
     // Direct invocation (no queues, no allocations).
-    static void invoke(uint32_t userId, RejectReason reason) noexcept
+    static void invoke(const RawOrder *order, RejectReason reason) noexcept
     {
         RejectCallback cb = callback_.load(std::memory_order_acquire);
         if (cb)
-            cb(userId, reason);
+            cb(order, reason);
     }
 
 private:

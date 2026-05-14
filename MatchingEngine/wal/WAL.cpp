@@ -59,6 +59,7 @@ void WALSystem::writeEntry()
 
   // flush to persisten storage
   logStream.flush();
+  ++lastSeq_;
 }
 
 void WALSystem::logInput(WalAction action, const Order *order)
@@ -113,11 +114,13 @@ void WALSystem::logTrade(OrderId aggId, OrderId restId, Price price, Qty qty)
   else
   {
     tradeStream.flush();
+    ++lastSeq_;
   }
 }
 
 void WALSystem::recover(std::function<void(const LogEntry &)> visitor)
 {
+  lastSeq_ = 0;
   // Use a local stream for reading
   std::ifstream logReader(logFile, std::ios::binary);
 
@@ -164,6 +167,7 @@ void WALSystem::recover(std::function<void(const LogEntry &)> visitor)
       try
       {
         visitor(reusableEntry);
+        ++lastSeq_;
         count++;
       }
       catch (const std::exception &e)
