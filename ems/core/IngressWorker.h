@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <thread>
 #include <vector>
 #include "shared/types/Events.h"
@@ -14,6 +15,7 @@
 #include "../pipeline/MarketState.h"
 #include "../pipeline/RateLimiter.h"
 #include "../pipeline/ValidationPipeline.h"
+#include "../../trade_server/ThreadAffinity.h"
 #include "../routing/SymbolRouter.h"
 #include "../types/RawOrder.h"
 #include "../types/OrderSlot.h"
@@ -40,7 +42,8 @@ private:
     void run()
     {
         tls_rejectQueue = rejectQueue_;
-        (void)workerIdx_;
+        if (const auto core = vse::threads::coreForRole("IOThread " + std::to_string(workerIdx_)))
+            vse::threads::pinToCore(*core);
 
         while (running_.load(std::memory_order_relaxed))
         {
@@ -121,6 +124,7 @@ public:
         SPSCQueueWrapper &queue,
         RateLimiter &rateLimiter,
         BalanceCache &balanceCache,
+        const SymbolCache &symbolCache,
         SymbolRouter &router,
         std::vector<MPSCRingBuffer> &ringBuffers,
         std::vector<std::unique_ptr<RejectionBitset>> &rejectedStateBuffers,
@@ -130,7 +134,7 @@ public:
         MarketState &marketState) noexcept
         : queue_(queue),
           rateLimiter_(rateLimiter),
-          pipeline_(rateLimiter_, marketState, balanceCache),
+          pipeline_(rateLimiter_, marketState, balanceCache, symbolCache),
           router_(router),
           ringBuffers_(ringBuffers),
           rejectedStateBuffers_(rejectedStateBuffers),

@@ -2,9 +2,9 @@
 #include <atomic>
 #include <array>
 #include <cstdint>
-#include <mutex>
-#include <shared_mutex>
-#include <unordered_map>
+#include <memory>
+
+#include "ems/config/EMSConfig.h"
 
 struct alignas(64) ConnState
 {
@@ -16,19 +16,20 @@ struct alignas(64) ConnState
 
 static_assert(sizeof(ConnState) == 64, "ConnState layout");
 
-// Minimal connection table: monotonic ids (production would recycle via a lock-free stack).
 class ConnTable
 {
 private:
     static constexpr std::uint32_t kMax = 65536;
 
     alignas(64) std::array<ConnState, kMax> slots_{};
-    std::atomic<std::uint32_t> nextId_{1};
-    mutable std::shared_mutex activeByUserMutex_;
-    std::unordered_map<std::uint64_t, std::uint32_t> activeByUser_;
+    alignas(64) std::array<std::uint32_t, kMax> nextFree_{};
+    std::atomic<std::uint32_t> freeTop_{0};
+    std::atomic<std::uint32_t> freeSize_{0};
+    std::unique_ptr<std::atomic<std::uint32_t>[]> activeByUser_;
 
 public:
     ConnTable() noexcept
+        : activeByUser_(std::make_unique<std::atomic<std::uint32_t>[]>(EMSConfig::MAX_USERS))
     {
         for (auto &s : slots_)
         {
@@ -36,21 +37,38 @@ public:
             s.user_id = 0;
             s.last_client_seq = 0;
         }
+        for (std::size_t i = 0; i < EMSConfig::MAX_USERS; ++i)
+            activeByUser_[i].store(0, std::memory_order_relaxed);
+        for (std::uint32_t id = 1; id < kMax - 1; ++id)
+            nextFree_[id] = id + 1;
+        nextFree_[kMax - 1] = 0;
+        freeTop_.store(1, std::memory_order_relaxed);
+        freeSize_.store(kMax - 1, std::memory_order_relaxed);
     }
 
     [[nodiscard]] std::uint32_t assign(std::uint64_t userId) noexcept
     {
-        const std::uint32_t id = nextId_.fetch_add(1, std::memory_order_relaxed);
-        if (id == 0 || id >= kMax)
+        std::uint32_t id = freeTop_.load(std::memory_order_acquire);
+        while (id != 0)
+        {
+            const std::uint32_t next = nextFree_[id];
+            if (freeTop_.compare_exchange_weak(
+                    id, next,
+                    std::memory_order_acq_rel,
+                    std::memory_order_acquire))
+            {
+                freeSize_.fetch_sub(1, std::memory_order_relaxed);
+                break;
+            }
+        }
+        if (id == 0)
             return 0;
+
         ConnState &s = slots_[id];
         s.user_id = userId;
         s.last_client_seq = 0;
         s.is_active = true;
-        {
-            std::unique_lock lock(activeByUserMutex_);
-            activeByUser_[userId] = id;
-        }
+        activeByUser_[userId % EMSConfig::MAX_USERS].store(id, std::memory_order_release);
         return id;
     }
 
@@ -60,18 +78,28 @@ public:
             return;
         ConnState &state = slots_[connId];
         state.is_active = false;
-        std::unique_lock lock(activeByUserMutex_);
-        const auto it = activeByUser_.find(state.user_id);
-        if (it != activeByUser_.end() && it->second == connId)
-            activeByUser_.erase(it);
+        activeByUser_[state.user_id % EMSConfig::MAX_USERS].store(0, std::memory_order_release);
+
+        std::uint32_t top = freeTop_.load(std::memory_order_acquire);
+        do
+        {
+            nextFree_[connId] = top;
+        } while (!freeTop_.compare_exchange_weak(
+            top, connId,
+            std::memory_order_acq_rel,
+            std::memory_order_acquire));
+        freeSize_.fetch_add(1, std::memory_order_relaxed);
     }
 
     [[nodiscard]] ConnState &get(std::uint32_t connId) noexcept { return slots_[connId]; }
 
     [[nodiscard]] std::uint32_t findByUser(std::uint64_t userId) const noexcept
     {
-        std::shared_lock lock(activeByUserMutex_);
-        const auto it = activeByUser_.find(userId);
-        return it == activeByUser_.end() ? 0U : it->second;
+        return activeByUser_[userId % EMSConfig::MAX_USERS].load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] std::uint32_t size() const noexcept
+    {
+        return freeSize_.load(std::memory_order_relaxed);
     }
 };

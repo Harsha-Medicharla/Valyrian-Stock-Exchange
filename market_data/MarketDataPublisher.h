@@ -1,12 +1,23 @@
 #pragma once
+#include <App.h>
+
 #include <atomic>
 #include <cstdint>
+#include <future>
 #include <thread>
 #include <vector>
 
 #include "CandleBuilder.h"
 #include "shared/queues/EventSPSC.h"
 #include "shared/types/Events.h"
+
+struct us_listen_socket_t;
+namespace uWS
+{
+class Loop;
+template <bool, bool, typename>
+class WebSocket;
+}
 
 class MarketDataPublisher
 {
@@ -15,14 +26,22 @@ private:
     uint32_t numSymbols_{0};
     uint16_t wsPort_{0};
     CandleBuilder candleBuilder_;
-    std::vector<Price> lastPrice_;
-    std::vector<Price> lastBestBid_;
-    std::vector<Price> lastBestAsk_;
+    std::vector<std::atomic<Price>> lastPrice_;
+    std::vector<std::atomic<Price>> lastBestBid_;
+    std::vector<std::atomic<Price>> lastBestAsk_;
     std::atomic<bool> running_{false};
     std::thread thread_;
+    std::thread wsThread_;
+    uWS::App *app_{nullptr};
+    uWS::Loop *loop_{nullptr};
+    us_listen_socket_t *listenSocket_{nullptr};
+    std::promise<uWS::Loop *> loopPromise_;
+    std::future<uWS::Loop *> loopFuture_{loopPromise_.get_future()};
 
     void run();
     void processTradeEvent(uint32_t sym, const TradeEvent &ev);
+    void runWs();
+    void publishToTopic(std::string topic, std::string payload);
 
 public:
     MarketDataPublisher(std::vector<EventSPSC<TradeEvent>> &tradeQueues, uint32_t numSymbols,
@@ -31,11 +50,16 @@ public:
           numSymbols_(numSymbols),
           wsPort_(wsPort),
           candleBuilder_(numSymbols),
-          lastPrice_(numSymbols, 0),
-          lastBestBid_(numSymbols, 0),
-          lastBestAsk_(numSymbols, 0)
+          lastPrice_(numSymbols),
+          lastBestBid_(numSymbols),
+          lastBestAsk_(numSymbols)
     {
-        (void)wsPort_;
+        for (uint32_t sym = 0; sym < numSymbols_; ++sym)
+        {
+            lastPrice_[sym].store(0, std::memory_order_relaxed);
+            lastBestBid_[sym].store(0, std::memory_order_relaxed);
+            lastBestAsk_[sym].store(0, std::memory_order_relaxed);
+        }
     }
 
     void start();

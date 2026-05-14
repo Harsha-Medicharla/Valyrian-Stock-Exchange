@@ -38,10 +38,6 @@ endif()
 
 find_package(Threads REQUIRED)
 
-add_executable(ems_app
-  main.cpp
-)
-
 add_library(ems_lib INTERFACE)
 target_include_directories(ems_lib INTERFACE
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -54,27 +50,4 @@ target_link_libraries(ems_lib INTERFACE
   Threads::Threads
   wal
   vse_shared
-)
-
-target_include_directories(ems_app
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}
-    ${rigtorp_spscqueue_SOURCE_DIR}/include
-    ${disruptorplus_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/MatchingEngine/include
-)
-
-target_compile_options(ems_app
-  PRIVATE
-    -O3
-    -march=native
-    -pthread
-)
-
-target_link_libraries(ems_app
-  PRIVATE
-    Threads::Threads
-    wal
-    vse_shared
 )

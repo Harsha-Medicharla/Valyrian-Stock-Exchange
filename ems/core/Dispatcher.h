@@ -3,11 +3,11 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include "../queues/MPSCRingBuffer.h"
 #include "../queues/RejectionBitset.h"
 #include "../config/EMSConfig.h"
-#include <pthread.h>
-#include <sched.h>
+#include "../../trade_server/ThreadAffinity.h"
 #include "../utils/SpinWait.h"
 #include "../types/OrderSlot.h"
 #include "../../MatchingEngine/include/MatchingEngine.h"
@@ -23,14 +23,7 @@ private:
     std::thread thread_;
     std::atomic<bool> running_;
     uint64_t nextServerSequence_;
-
-    static constexpr uint64_t kMask = static_cast<uint64_t>(EMSConfig::MPSC_BUFFER_SIZE - 1);
-
-    [[nodiscard]] inline uint64_t mapServerToRingSeq(uint64_t serverSeq) const noexcept
-    {
-        // If serverSeq starts at 1, but ring is 0-indexed:
-        return (serverSeq - 1) & kMask;
-    }
+    uint64_t nextRingSequence_;
 
     void run() noexcept
     {
@@ -38,16 +31,17 @@ private:
 
         while (running_.load(std::memory_order_relaxed))
         {
+            // 1. Check if the current server sequence was rejected pre-trade
             if (rejectedStates_.tryConsumeRejected(nextServerSequence_))
             {
                 ++nextServerSequence_;
                 continue;
             }
 
-            const uint64_t ringSeq = mapServerToRingSeq(nextServerSequence_);
-            if (ring_.isAvailable(ringSeq))
+            // 2. Otherwise, it must be waiting for us in the next physical ring slot
+            if (ring_.isAvailable(nextRingSequence_))
             {
-                OrderSlot &slot = ring_.get(ringSeq);
+                OrderSlot &slot = ring_.get(nextRingSequence_);
                 if (slot.sequence != nextServerSequence_)
                 {
                     ems::pause();
@@ -74,7 +68,8 @@ private:
                         static_cast<Qty>(slot.qty),
                         static_cast<TimeStamp>(slot.timestamp));
                 }
-                ring_.releaseSlot(ringSeq);
+                ring_.releaseSlot(nextRingSequence_);
+                ++nextRingSequence_;
                 ++nextServerSequence_;
                 continue;
             }
@@ -85,18 +80,10 @@ private:
 
     void pinToCore() noexcept
     {
-#if defined(__linux__)
-        cpu_set_t cpuset;
-        CPU_ZERO(&cpuset);
-        CPU_SET(coreId_, &cpuset);
-
-        pthread_setaffinity_np(
-            pthread_self(),
-            sizeof(cpu_set_t),
-            &cpuset);
-#else
-        (void)coreId_;
-#endif
+        if (const auto mapped = vse::threads::coreForRole("METhread " + std::to_string(symbolId_)))
+            vse::threads::pinToCore(*mapped);
+        else
+            vse::threads::pinToCore(coreId_);
     }
 
 public:
@@ -113,7 +100,8 @@ public:
           coreId_(coreId),
           thread_(),
           running_(false),
-          nextServerSequence_(1)
+          nextServerSequence_(1),
+          nextRingSequence_(1)
     {
     }
 

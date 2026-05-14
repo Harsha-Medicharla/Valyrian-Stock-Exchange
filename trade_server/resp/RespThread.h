@@ -11,6 +11,7 @@
 #include "core/RejectHandler.h"
 #include "network/WebSocketServer.h"
 #include "protocol/WireTypes_generated.h"
+#include "trade_server/ThreadAffinity.h"
 #include "shared/types/Events.h"
 #include "types/RawOrder.h"
 #include "utils/SpinWait.h"
@@ -22,6 +23,7 @@ private:
     WebSocketServer &ws_;
     std::atomic<bool> running_{false};
     std::thread thread_;
+    flatbuffers::FlatBufferBuilder fbb_{128};
 
     static void rejectCallback(const RawOrder *order, RejectReason reason) noexcept
     {
@@ -42,11 +44,11 @@ private:
         (void)tls_rejectQueue->tryPush(ev);
     }
 
-    static std::string encodeExecutionReport(const OrderEvent &ev)
+    std::string encodeExecutionReport(const OrderEvent &ev)
     {
-        flatbuffers::FlatBufferBuilder builder(128);
+        fbb_.Clear();
         const auto report = VSE::CreateExecutionReport(
-            builder,
+            fbb_,
             ev.order_id,
             ev.sequence,
             ev.fill_price,
@@ -54,12 +56,15 @@ private:
             ev.remaining,
             static_cast<int8_t>(ev.type),
             static_cast<int8_t>(ev.reject_reason));
-        builder.Finish(report);
-        return std::string(reinterpret_cast<const char *>(builder.GetBufferPointer()), builder.GetSize());
+        fbb_.Finish(report);
+        return std::string(reinterpret_cast<const char *>(fbb_.GetBufferPointer()), fbb_.GetSize());
     }
 
     void run()
     {
+        if (const auto core = vse::threads::coreForRole("RespThread"))
+            vse::threads::pinToCore(*core);
+
         while (running_.load(std::memory_order_relaxed))
         {
             bool any = false;

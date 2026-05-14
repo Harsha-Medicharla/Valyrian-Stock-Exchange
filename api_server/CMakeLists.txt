@@ -34,8 +34,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(drogon_fc)
 
-add_executable(api_server_app main_drogon.cpp)
-target_link_libraries(api_server_app PRIVATE Threads::Threads Drogon::Drogon)
+add_executable(api_server_app
+  main_drogon.cpp
+  controllers/AuthController.cpp
+  controllers/OrderController.cpp
+  controllers/BalanceController.cpp
+  controllers/AccountController.cpp
+  controllers/MarketController.cpp
+  middleware/SessionValidator.cpp
+  db/PGPool.cpp
+  db/RedisPool.cpp
+)
+target_link_libraries(api_server_app PRIVATE Threads::Threads drogon hiredis)
 
 target_include_directories(api_server_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}

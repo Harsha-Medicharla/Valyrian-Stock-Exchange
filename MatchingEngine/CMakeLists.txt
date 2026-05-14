@@ -83,4 +83,4 @@ target_link_libraries(
 )
 
 include(GoogleTest)
-gtest_discover_tests(matching_engine_test)
+add_test(NAME matching_engine_test COMMAND matching_engine_test)

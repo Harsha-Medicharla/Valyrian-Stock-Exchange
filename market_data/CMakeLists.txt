@@ -14,6 +14,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(rigtorp_spscqueue)
 
+include(${CMAKE_SOURCE_DIR}/trade_server/cmake/UsocketsUWebSockets.cmake)
+
 add_library(vse_market_data_lib STATIC
   MarketDataPublisher.cpp
   CandleBuilder.cpp
@@ -26,7 +28,4 @@ target_include_directories(vse_market_data_lib PUBLIC
   ${rigtorp_spscqueue_SOURCE_DIR}/include
 )
 
-target_link_libraries(vse_market_data_lib PUBLIC Threads::Threads vse_shared)
-
-add_executable(market_data_app main.cpp)
-target_link_libraries(market_data_app PRIVATE vse_market_data_lib)
+target_link_libraries(vse_market_data_lib PUBLIC Threads::Threads vse_shared uwebsockets_vse)

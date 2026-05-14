@@ -1,11 +1,13 @@
 #pragma once
+#include <App.h>
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <mutex>
 #include <memory>
 #include <string>
 #include <thread>
+#include <functional>
 #include <vector>
 
 #include "core/EMSCore.h"
@@ -40,6 +42,7 @@ private:
     std::vector<ConnectionEndpoint> endpoints_;
     std::mutex endpointsMutex_;
     std::atomic<std::uint64_t> nextEndpointGeneration_{1};
+    std::function<void(std::uint32_t, const std::string &)> sendObserver_;
 
     [[nodiscard]] bool devSkipAuth() const noexcept;
     [[nodiscard]] bool resolveUserFromBearer(redisContext *redis, std::string_view authorization,
@@ -68,6 +71,10 @@ public:
     [[nodiscard]] ConnTable &connTable() noexcept { return connTable_; }
 
     [[nodiscard]] bool sendToConnection(std::uint32_t conn_id, std::string payload) noexcept;
+    void setSendObserver(std::function<void(std::uint32_t, const std::string &)> observer) noexcept
+    {
+        sendObserver_ = std::move(observer);
+    }
 
     void run();
 };

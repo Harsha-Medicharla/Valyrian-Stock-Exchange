@@ -11,7 +11,8 @@ enum class WalAction : uint8_t
 {
     ADD = 1,
     CANCEL = 2,
-    MODIFY = 3
+    MODIFY = 3,
+    TRADE = 4
 };
 
 class OrderData
@@ -26,6 +27,7 @@ public:
     Qty remaining;
     TimeStamp timestamp;
     OrderState state;
+    OrderId peer_order_id = 0;
 };
 
 class LogEntry
@@ -39,12 +41,8 @@ class WALSystem
 {
 private:
     std::string logFile;   // Path to the log file (unchanged name)
-    std::string tradeFile; // Path to the trade file (unchanged name)
 
-    // NEW: Persistent file streams
-    // We add these to keep the connection open for performance and error checking.
     std::ofstream logStream;
-    std::ofstream tradeStream;
 
     LogEntry reusableEntry;
 
