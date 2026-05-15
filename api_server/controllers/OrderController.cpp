@@ -1,8 +1,10 @@
 #include "OrderController.h"
 
 #include <cstdlib>
+#include <json/json.h>
 
 #include "api_server/db/PGPool.h"
+#include "api_server/db/RedisPool.h"
 #include "api_server/middleware/SessionValidator.h"
 
 void OrderController::listOrders(const drogon::HttpRequestPtr &req,
@@ -117,7 +119,8 @@ void OrderController::cancelOrder(const drogon::HttpRequestPtr &req,
     try
     {
         const auto db = PGPool::client();
-        const auto result = db->execSqlSync("SELECT user_id FROM orders WHERE order_id=$1", orderId);
+        const auto result = db->execSqlSync(
+            "SELECT user_id, symbol_id FROM orders WHERE order_id=$1", orderId);
         if (result.empty())
         {
             auto resp = drogon::HttpResponse::newHttpResponse();
@@ -129,6 +132,21 @@ void OrderController::cancelOrder(const drogon::HttpRequestPtr &req,
         {
             auto resp = drogon::HttpResponse::newHttpResponse();
             resp->setStatusCode(drogon::k403Forbidden);
+            callback(resp);
+            return;
+        }
+
+        Json::Value cancel(Json::objectValue);
+        cancel["type"] = "Cancel";
+        cancel["order_id"] = Json::UInt64(orderId);
+        cancel["user_id"] = Json::UInt64(*userId);
+        cancel["symbol_id"] = result[0]["symbol_id"].as<uint32_t>();
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        if (!RedisPool::instance().publish("vse:orders:cancel", Json::writeString(writer, cancel)))
+        {
+            auto resp = drogon::HttpResponse::newHttpResponse();
+            resp->setStatusCode(drogon::k503ServiceUnavailable);
             callback(resp);
             return;
         }

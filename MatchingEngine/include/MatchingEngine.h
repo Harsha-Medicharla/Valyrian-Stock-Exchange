@@ -61,20 +61,9 @@ public:
     wal.recover([this](const LogEntry &entry) {
       if (entry.action == WalAction::ADD)
       {
-        Order *order = order_book_.requestAllocationOfOrder();
-
-        order->order_id = entry.data.order_id;
-        order->user_id = entry.data.user_id;
-        order->side = entry.data.side;
-        order->type = entry.data.type;
-        order->price = entry.data.price;
-        order->quantity = entry.data.quantity;
-        order->remaining = entry.data.remaining;
-        order->timestamp = entry.data.timestamp;
-        order->state = entry.data.state;
-
-        this->onNewOrder(order->order_id, order->user_id, order->side, order->type, order->price,
-                         order->quantity, order->timestamp);
+        this->onNewOrder(entry.data.order_id, entry.data.user_id, entry.data.side,
+                         entry.data.type, entry.data.price, entry.data.quantity,
+                         entry.data.timestamp);
       }
       else if (entry.action == WalAction::CANCEL)
       {

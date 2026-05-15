@@ -1,6 +1,8 @@
 #pragma once
 #include <atomic>
 #include <cstdint>
+#include "shared/queues/EventSPSC.h"
+#include "shared/types/Events.h"
 #include "../types/Common.h"
 
 struct RawOrder;
@@ -25,6 +27,22 @@ public:
             cb(order, reason);
     }
 
+    static void setRejectQueue(EventSPSC<OrderEvent> *queue) noexcept
+    {
+        currentRejectQueue() = queue;
+    }
+
+    [[nodiscard]] static EventSPSC<OrderEvent> *rejectQueue() noexcept
+    {
+        return currentRejectQueue();
+    }
+
 private:
+    static EventSPSC<OrderEvent> *&currentRejectQueue() noexcept
+    {
+        static thread_local EventSPSC<OrderEvent> *queue = nullptr;
+        return queue;
+    }
+
     inline static std::atomic<RejectCallback> callback_{nullptr};
 };

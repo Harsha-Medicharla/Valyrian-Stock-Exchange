@@ -1,5 +1,4 @@
 #pragma once
-#include <atomic>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -21,7 +20,6 @@ class PGWriter : public IDBWriterBackend
 private:
     PGconn *conn_{nullptr};
     std::string connString_;
-    std::atomic<std::uint64_t> nextTradeId_{1};
 
 public:
     explicit PGWriter(std::string connString);

@@ -7,6 +7,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <json/json.h>
+#include <memory>
+#include <sstream>
 #include <thread>
 #include <string_view>
 #include <utility>
@@ -69,11 +72,17 @@ struct WsUserData
 using WsSocket = uWS::WebSocket<false, true, WsUserData>;
 
 WebSocketServer::WebSocketServer(EMSCore &ems, std::uint16_t port)
+    : WebSocketServer(ems, port, true)
+{
+}
+
+WebSocketServer::WebSocketServer(EMSCore &ems, std::uint16_t port, bool redisEnabled)
     : ems_(ems),
       connTable_(),
       port_(port),
       redis_host_(envOr("REDIS_HOST", "127.0.0.1")),
       redis_port_(std::atoi(envOr("REDIS_PORT", "6379"))),
+      redis_enabled_(redisEnabled),
       order_ids_(1),
       num_symbols_(ems.numSymbols()),
       server_seq_by_symbol_(num_symbols_ > 0 ? std::make_unique<std::atomic<uint64_t>[]>(num_symbols_) : nullptr),
@@ -86,7 +95,11 @@ WebSocketServer::WebSocketServer(EMSCore &ems, std::uint16_t port)
     }
 }
 
-WebSocketServer::~WebSocketServer() = default;
+WebSocketServer::~WebSocketServer()
+{
+    stop();
+    stopCancelSubscriber();
+}
 
 bool WebSocketServer::devSkipAuth() const noexcept
 {
@@ -278,6 +291,84 @@ void WebSocketServer::unregisterEndpoint(std::uint32_t conn_id) noexcept
     endpoints_[conn_id] = {};
 }
 
+void WebSocketServer::registerLoop(uWS::Loop *loop, us_listen_socket_t *listenSocket) noexcept
+{
+    std::lock_guard lock(loopMutex_);
+    loops_.push_back(loop);
+    listenSockets_.push_back(listenSocket);
+}
+
+bool WebSocketServer::pushCancelOrder(std::uint64_t user_id, std::uint32_t symbol_id,
+                                      std::uint64_t order_id) noexcept
+{
+    if (symbol_id >= num_symbols_)
+        return false;
+
+    std::uint64_t seq = 0;
+    if (!nextServerSequence(symbol_id, seq))
+        return false;
+
+    RawOrder ro{};
+    ro.sequence = seq;
+    ro.order_id = order_id;
+    ro.user_id = static_cast<std::uint32_t>(user_id);
+    ro.symbol_id = symbol_id;
+    ro.timestamp = wallTimestampNs();
+    ro.cancel_flag = 1;
+    ro.modify_flag = 0;
+    return pushRawOrder(ro, static_cast<std::size_t>(user_id));
+}
+
+void WebSocketServer::runCancelSubscriber() noexcept
+{
+    while (cancelSubscriberRunning_.load(std::memory_order_acquire))
+    {
+        timeval timeout{1, 0};
+        redisContext *redis = redisConnectWithTimeout(redis_host_.c_str(), redis_port_, timeout);
+        if (!redis || redis->err)
+        {
+            if (redis)
+                redisFree(redis);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            continue;
+        }
+        (void)redisSetTimeout(redis, timeout);
+
+        redisReply *sub = static_cast<redisReply *>(
+            redisCommand(redis, "SUBSCRIBE vse:orders:cancel"));
+        if (sub)
+            freeReplyObject(sub);
+
+        while (cancelSubscriberRunning_.load(std::memory_order_acquire))
+        {
+            void *rawReply = nullptr;
+            if (redisGetReply(redis, &rawReply) != REDIS_OK)
+                break;
+            redisReply *reply = static_cast<redisReply *>(rawReply);
+            if (reply && reply->type == REDIS_REPLY_ARRAY && reply->elements >= 3 &&
+                reply->element[2]->type == REDIS_REPLY_STRING)
+            {
+                Json::Value msg;
+                Json::CharReaderBuilder reader;
+                std::string errs;
+                const char *begin = reply->element[2]->str;
+                const char *end = begin + reply->element[2]->len;
+                const std::unique_ptr<Json::CharReader> parser(reader.newCharReader());
+                if (parser->parse(begin, end, &msg, &errs))
+                {
+                    (void)pushCancelOrder(msg["user_id"].asUInt64(),
+                                          msg["symbol_id"].asUInt(),
+                                          msg["order_id"].asUInt64());
+                }
+            }
+            if (reply)
+                freeReplyObject(reply);
+        }
+
+        redisFree(redis);
+    }
+}
+
 bool WebSocketServer::sendToConnection(std::uint32_t conn_id, std::string payload) noexcept
 {
     if (sendObserver_)
@@ -314,18 +405,27 @@ bool WebSocketServer::sendToConnection(std::uint32_t conn_id, std::string payloa
 
 void WebSocketServer::run()
 {
-    const std::size_t threadCount = std::max<std::size_t>(1, TradeServerConfig::IO_THREADS);
+    running_.store(true, std::memory_order_release);
+    const char *ioThreadsEnv = std::getenv("VSE_IO_THREADS");
+    const int configuredThreads = ioThreadsEnv ? std::atoi(ioThreadsEnv) : 0;
+    const std::size_t threadCount = std::max<std::size_t>(
+        1, configuredThreads > 0 ? static_cast<std::size_t>(configuredThreads)
+                                 : TradeServerConfig::IO_THREADS);
     std::vector<std::thread> ioThreads;
     ioThreads.reserve(threadCount);
 
     for (std::size_t i = 0; i < threadCount; ++i)
     {
         ioThreads.emplace_back([this]() {
-            redisContext *redis = redisConnect(redis_host_.c_str(), redis_port_);
-            if (redis && redis->err)
+            redisContext *redis = nullptr;
+            if (redis_enabled_)
             {
-                redisFree(redis);
-                redis = nullptr;
+                redis = redisConnect(redis_host_.c_str(), redis_port_);
+                if (redis && redis->err)
+                {
+                    redisFree(redis);
+                    redis = nullptr;
+                }
             }
 
             uWS::App app;
@@ -393,7 +493,8 @@ void WebSocketServer::run()
                     "0.0.0.0",
                     static_cast<int>(port_),
                     0,
-                    [port = port_](us_listen_socket_t *token) {
+                    [this, port = port_](us_listen_socket_t *token) {
+                        registerLoop(uWS::Loop::get(), token);
                         if (!token)
                         {
                             std::fprintf(stderr, "vse_trade_server: listen failed on port %u\n",
@@ -410,4 +511,38 @@ void WebSocketServer::run()
 
     for (auto &thread : ioThreads)
         thread.join();
+    running_.store(false, std::memory_order_release);
+}
+
+void WebSocketServer::startCancelSubscriber()
+{
+    if (!redis_enabled_)
+        return;
+    cancelSubscriberRunning_.store(true, std::memory_order_release);
+    cancelSubscriberThread_ = std::thread(&WebSocketServer::runCancelSubscriber, this);
+}
+
+void WebSocketServer::stopCancelSubscriber() noexcept
+{
+    cancelSubscriberRunning_.store(false, std::memory_order_release);
+    if (cancelSubscriberThread_.joinable())
+        cancelSubscriberThread_.join();
+}
+
+void WebSocketServer::stop() noexcept
+{
+    running_.store(false, std::memory_order_release);
+    std::lock_guard lock(loopMutex_);
+    for (std::size_t i = 0; i < loops_.size(); ++i)
+    {
+        uWS::Loop *loop = loops_[i];
+        us_listen_socket_t *listenSocket = i < listenSockets_.size() ? listenSockets_[i] : nullptr;
+        if (!loop)
+            continue;
+        loop->defer([loop, listenSocket]() {
+            if (listenSocket)
+                us_listen_socket_close(0, listenSocket);
+            loop->free();
+        });
+    }
 }

@@ -27,7 +27,8 @@ private:
 
     static void rejectCallback(const RawOrder *order, RejectReason reason) noexcept
     {
-        if (!order || !tls_rejectQueue)
+        EventSPSC<OrderEvent> *rejectQueue = RejectHandler::rejectQueue();
+        if (!order || !rejectQueue)
             return;
         OrderEvent ev{};
         ev.type = OrderEventType::REJECT;
@@ -41,7 +42,7 @@ private:
         ev.reject_reason = reason;
         ev.sequence = static_cast<SeqNo>(order->sequence);
         ev.timestamp = order->timestamp;
-        (void)tls_rejectQueue->tryPush(ev);
+        (void)rejectQueue->tryPush(ev);
     }
 
     std::string encodeExecutionReport(const OrderEvent &ev)
