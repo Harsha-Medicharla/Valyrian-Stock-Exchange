@@ -27,8 +27,32 @@ PGWriter::~PGWriter()
 
 void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
 {
-    if (!conn_)
-        return;
+    // Reconnect if connection is missing or broken
+    if (!conn_ || PQstatus(conn_) != CONNECTION_OK)
+    {
+        if (conn_)
+        {
+            PQreset(conn_);
+            if (PQstatus(conn_) != CONNECTION_OK)
+            {
+                PQfinish(conn_);
+                conn_ = nullptr;
+            }
+        }
+        if (!conn_)
+        {
+            conn_ = PQconnectdb(connString_.c_str());
+            if (!conn_ || PQstatus(conn_) != CONNECTION_OK)
+            {
+                std::fprintf(stderr,
+                    "PGWriter: reconnect failed: %s\n",
+                    conn_ ? PQerrorMessage(conn_) : "null");
+                if (conn_) { PQfinish(conn_); conn_ = nullptr; }
+                return;
+            }
+            std::fprintf(stderr, "PGWriter: reconnected to PostgreSQL.\n");
+        }
+    }
 
     auto clearResult = [](PGresult *res) {
         if (res)
@@ -88,8 +112,10 @@ void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
             const std::string orderId = std::to_string(event.order_id);
             const std::string filledQty = std::to_string(event.qty - event.remaining);
             const std::string status = std::to_string(static_cast<int>(event.state));
-            const char *updateValues[] = {orderId.c_str(), filledQty.c_str(), status.c_str()};
-            if (!execParamsText(kSqlOrdersUpdate, 3, updateValues))
+            const std::string fillPriceStr = std::to_string(event.fill_price);
+            const char *updateValues[] = {
+                orderId.c_str(), filledQty.c_str(), status.c_str(), fillPriceStr.c_str()};
+            if (!execParamsText(kSqlOrdersUpdate, 4, updateValues))
             {
                 rollback();
                 return;
@@ -114,6 +140,65 @@ void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
                     rollback();
                     return;
                 }
+
+                // Update buyer balances: deduct blocked funds
+                {
+                    const std::string buyerUserId = std::to_string(event.user_id);
+                    const std::string notional = std::to_string(
+                        event.fill_price * static_cast<int64_t>(event.fill_qty));
+                    const char *bv[] = {buyerUserId.c_str(), notional.c_str()};
+                    // Decrease blocked, leave available unchanged (already deducted at order time)
+                    if (!execParamsText(
+                        "UPDATE balances SET blocked = blocked - $2 WHERE user_id = $1",
+                        2, bv))
+                    {
+                        rollback(); return;
+                    }
+                }
+                // Update buyer holdings: add available_qty
+                {
+                    const std::string buyerUserId = std::to_string(event.user_id);
+                    const std::string symId = std::to_string(event.symbol_id);
+                    const std::string fillQtyStr = std::to_string(event.fill_qty);
+                    const char *hv[] = {buyerUserId.c_str(), symId.c_str(), fillQtyStr.c_str()};
+                    if (!execParamsText(
+                        "INSERT INTO holdings (user_id, symbol_id, available_qty, blocked_qty) "
+                        "VALUES ($1, $2, $3, 0) "
+                        "ON CONFLICT (user_id, symbol_id) DO UPDATE "
+                        "SET available_qty = holdings.available_qty + $3",
+                        3, hv))
+                    {
+                        rollback(); return;
+                    }
+                }
+            }
+
+            // Always update the order-side participant's DB records.
+            // For SELL side: deduct blocked holdings and add available balance.
+            if (event.side == Side::SELL)
+            {
+                const std::string sellUserId = std::to_string(event.user_id);
+                const std::string symId = std::to_string(event.symbol_id);
+                const std::string fillQtyStr = std::to_string(event.fill_qty);
+                const std::string notional = std::to_string(
+                    event.fill_price * static_cast<int64_t>(event.fill_qty));
+                // Deduct blocked holdings
+                const char *hv[] = {sellUserId.c_str(), symId.c_str(), fillQtyStr.c_str()};
+                if (!execParamsText(
+                    "UPDATE holdings SET blocked_qty = blocked_qty - $3 "
+                    "WHERE user_id = $1 AND symbol_id = $2",
+                    3, hv))
+                {
+                    rollback(); return;
+                }
+                // Credit available balance
+                const char *bv[] = {sellUserId.c_str(), notional.c_str()};
+                if (!execParamsText(
+                    "UPDATE balances SET available = available + $2 WHERE user_id = $1",
+                    2, bv))
+                {
+                    rollback(); return;
+                }
             }
             break;
         }
@@ -121,8 +206,10 @@ void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
             const std::string orderId = std::to_string(event.order_id);
             const std::string filledQty = std::to_string(event.qty - event.remaining);
             const std::string status = "2";
-            const char *values[] = {orderId.c_str(), filledQty.c_str(), status.c_str()};
-            if (!execParamsText(kSqlOrdersUpdate, 3, values))
+            const std::string zeroPrice = "0";
+            const char *values[] = {
+                orderId.c_str(), filledQty.c_str(), status.c_str(), zeroPrice.c_str()};
+            if (!execParamsText(kSqlOrdersUpdate, 4, values))
             {
                 rollback();
                 return;
@@ -133,8 +220,10 @@ void PGWriter::writeBatch(const std::vector<DBEvent> &batch)
             const std::string orderId = std::to_string(event.order_id);
             const std::string filledQty = std::to_string(event.qty - event.remaining);
             const std::string status = std::to_string(static_cast<int>(event.state));
-            const char *values[] = {orderId.c_str(), filledQty.c_str(), status.c_str()};
-            if (!execParamsText(kSqlOrdersUpdate, 3, values))
+            const std::string zeroPrice = "0";
+            const char *values[] = {
+                orderId.c_str(), filledQty.c_str(), status.c_str(), zeroPrice.c_str()};
+            if (!execParamsText(kSqlOrdersUpdate, 4, values))
             {
                 rollback();
                 return;

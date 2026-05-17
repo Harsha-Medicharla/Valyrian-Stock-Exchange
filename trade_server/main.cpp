@@ -124,6 +124,7 @@ int main()
     marketData.start();
     resp.start();
     ws.startCancelSubscriber();
+    ws.startBalanceSyncSubscriber(ems.balanceCache());
 
     std::fprintf(stderr, "vse_trade_server: WebSocket listening on port %u (Ctrl+C to exit)\n",
                  static_cast<unsigned>(wsPort));
@@ -137,6 +138,7 @@ int main()
     running.store(false, std::memory_order_release);
 
     ws.stopCancelSubscriber();
+    ws.stopBalanceSyncSubscriber();
     resp.stop();
     resp.join();
     marketData.stop();

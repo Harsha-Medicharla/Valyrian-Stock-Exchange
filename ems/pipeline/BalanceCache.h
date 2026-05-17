@@ -150,6 +150,14 @@ public:
         sl.available_qty.fetch_add(qty, std::memory_order_release);
     }
 
+    void addAvailable(uint32_t userId, int64_t amount) noexcept
+    {
+        if (amount <= 0)
+            return;
+        BalanceEntry &be = balances_[static_cast<std::size_t>(userId) % kMaxUsers];
+        be.available.fetch_add(amount, std::memory_order_release);
+    }
+
     void setBalance(uint32_t userId, int64_t available, int64_t blocked) noexcept
     {
         BalanceEntry &be = balances_[static_cast<std::size_t>(userId) % kMaxUsers];

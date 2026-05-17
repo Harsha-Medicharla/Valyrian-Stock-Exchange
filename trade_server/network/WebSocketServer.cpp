@@ -99,6 +99,7 @@ WebSocketServer::~WebSocketServer()
 {
     stop();
     stopCancelSubscriber();
+    stopBalanceSyncSubscriber();
 }
 
 bool WebSocketServer::devSkipAuth() const noexcept
@@ -527,6 +528,79 @@ void WebSocketServer::stopCancelSubscriber() noexcept
     cancelSubscriberRunning_.store(false, std::memory_order_release);
     if (cancelSubscriberThread_.joinable())
         cancelSubscriberThread_.join();
+}
+
+void WebSocketServer::startBalanceSyncSubscriber(BalanceCache &cache) noexcept
+{
+    balanceSyncRunning_.store(true, std::memory_order_release);
+    balanceSyncThread_ = std::thread([this, &cache]() noexcept {
+        runBalanceSyncSubscriberImpl(cache);
+    });
+}
+
+void WebSocketServer::stopBalanceSyncSubscriber() noexcept
+{
+    balanceSyncRunning_.store(false, std::memory_order_release);
+    if (balanceSyncThread_.joinable())
+        balanceSyncThread_.join();
+}
+
+void WebSocketServer::runBalanceSyncSubscriberImpl(BalanceCache &cache) noexcept
+{
+    while (balanceSyncRunning_.load(std::memory_order_acquire))
+    {
+        timeval timeout{1, 0};
+        redisContext *redis = redisConnectWithTimeout(
+            redis_host_.c_str(), redis_port_, timeout);
+        if (!redis || redis->err)
+        {
+            if (redis)
+                redisFree(redis);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            continue;
+        }
+        (void)redisSetTimeout(redis, timeout);
+
+        redisReply *sub = static_cast<redisReply *>(
+            redisCommand(redis, "SUBSCRIBE vse:balances:sync"));
+        if (sub)
+            freeReplyObject(sub);
+
+        while (balanceSyncRunning_.load(std::memory_order_acquire))
+        {
+            void *rawReply = nullptr;
+            if (redisGetReply(redis, &rawReply) != REDIS_OK)
+                break;
+            redisReply *reply = static_cast<redisReply *>(rawReply);
+            if (reply && reply->type == REDIS_REPLY_ARRAY &&
+                reply->elements >= 3 &&
+                reply->element[2]->type == REDIS_REPLY_STRING)
+            {
+                Json::Value msg;
+                Json::CharReaderBuilder reader;
+                std::string errs;
+                const char *begin = reply->element[2]->str;
+                const char *end = begin + reply->element[2]->len;
+                const std::unique_ptr<Json::CharReader> parser(
+                    reader.newCharReader());
+                if (parser->parse(begin, end, &msg, &errs))
+                {
+                    const std::string type = msg["type"].asString();
+                    const uint32_t userId =
+                        static_cast<uint32_t>(msg["user_id"].asUInt64());
+                    if (type == "Deposit")
+                    {
+                        const int64_t amount = msg["amount"].asInt64();
+                        if (amount > 0)
+                            cache.addAvailable(userId, amount);
+                    }
+                }
+            }
+            if (reply)
+                freeReplyObject(reply);
+        }
+        redisFree(redis);
+    }
 }
 
 void WebSocketServer::stop() noexcept

@@ -89,9 +89,20 @@ void MarketDataPublisher::processTradeEvent(uint32_t sym, const TradeEvent &ev)
                             ",\"ts\":" + std::to_string(ev.timestamp) + "}";
     publishToTopic(topicForSymbol(sym), std::move(tradeJson));
 
-    std::string candleJson = candleBuilder_.onTrade(sym, ev.price, ev.qty, ev.timestamp);
-    if (!candleJson.empty())
-        publishToTopic(candleTopicForSymbol(sym), std::move(candleJson));
+    std::string candleResult = candleBuilder_.onTrade(sym, ev.price, ev.qty, ev.timestamp);
+    if (!candleResult.empty())
+    {
+        std::size_t pos = 0;
+        while (pos < candleResult.size())
+        {
+            const std::size_t nl = candleResult.find('\n', pos);
+            const std::size_t end =
+                (nl == std::string::npos) ? candleResult.size() : nl;
+            publishToTopic(candleTopicForSymbol(sym),
+                           candleResult.substr(pos, end - pos));
+            pos = (nl == std::string::npos) ? candleResult.size() : nl + 1;
+        }
+    }
 }
 
 void MarketDataPublisher::run()
