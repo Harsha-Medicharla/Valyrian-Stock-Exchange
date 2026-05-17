@@ -69,3 +69,56 @@ void AccountController::updateAccount(const drogon::HttpRequestPtr &req,
         callback(resp);
     }
 }
+
+void AccountController::deposit(const drogon::HttpRequestPtr &req,
+                                std::function<void(const drogon::HttpResponsePtr &)> &&callback)
+{
+    const auto userId = SessionValidator::userId(req);
+    const auto body = req->getJsonObject();
+    if (!userId || !body || !body->isMember("amount"))
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    const int64_t amount = (*body)["amount"].asInt64();
+    if (amount <= 0)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    try
+    {
+        const auto db = PGPool::client();
+        // 1. Persist directly to PostgreSQL database
+        db->execSqlSync(
+            "INSERT INTO balances (user_id, available, blocked) VALUES ($1, $2, 0) "
+            "ON CONFLICT (user_id) DO UPDATE SET available = balances.available + $2",
+            *userId, amount);
+
+        // 2. Publish balance synchronization payload to Redis to inform the engine layers
+        Json::Value balanceSync(Json::objectValue);
+        balanceSync["type"] = "Deposit";
+        balanceSync["user_id"] = Json::UInt64(*userId);
+        balanceSync["amount"] = Json::Int64(amount);
+        
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        RedisPool::instance().publish("vse:balances:sync", Json::writeString(writer, balanceSync));
+
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k204NoContent);
+        callback(resp);
+    }
+    catch (...)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k500InternalServerError);
+        callback(resp);
+    }
+}

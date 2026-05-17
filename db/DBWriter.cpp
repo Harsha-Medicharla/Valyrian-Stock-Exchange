@@ -21,15 +21,18 @@ void DBWriter::flush()
         else if (e.type == DBEventType::ORDER_CANCELLED)
         {
             const Qty remainingAtCancel = e.remaining;
-            if (e.side == Side::BUY)
+            if (remainingAtCancel > 0)
             {
-                const int64_t unblockAmt = e.price * remainingAtCancel;
-                balanceCache_.unblockFunds(static_cast<uint32_t>(e.user_id), unblockAmt);
-            }
-            else
-            {
-                balanceCache_.unblockHoldings(static_cast<uint32_t>(e.user_id), e.symbol_id,
-                                              static_cast<int32_t>(remainingAtCancel));
+                if (e.side == Side::BUY)
+                {
+                    const int64_t unblockAmt = e.price * remainingAtCancel;
+                    balanceCache_.unblockFunds(static_cast<uint32_t>(e.user_id), unblockAmt);
+                }
+                else
+                {
+                    balanceCache_.unblockHoldings(static_cast<uint32_t>(e.user_id), e.symbol_id,
+                                                  static_cast<int32_t>(remainingAtCancel));
+                }
             }
         }
     }

@@ -531,6 +531,8 @@ void WebSocketServer::stopCancelSubscriber() noexcept
 
 void WebSocketServer::stop() noexcept
 {
+    if (stopCalled_.exchange(true, std::memory_order_acq_rel))
+        return;
     running_.store(false, std::memory_order_release);
     std::lock_guard lock(loopMutex_);
     for (std::size_t i = 0; i < loops_.size(); ++i)
@@ -542,7 +544,6 @@ void WebSocketServer::stop() noexcept
         loop->defer([loop, listenSocket]() {
             if (listenSocket)
                 us_listen_socket_close(0, listenSocket);
-            loop->free();
         });
     }
 }

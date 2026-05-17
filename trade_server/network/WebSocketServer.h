@@ -49,6 +49,7 @@ private:
     std::mutex loopMutex_;
     std::atomic<std::uint64_t> nextEndpointGeneration_{1};
     std::atomic<bool> running_{false};
+    std::atomic<bool> stopCalled_{false};
     std::atomic<bool> cancelSubscriberRunning_{false};
     std::thread cancelSubscriberThread_;
     std::function<void(std::uint32_t, const std::string &)> sendObserver_;

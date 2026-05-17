@@ -5,3 +5,4 @@ build_trade_test/
 *.wal
 *.trades
 matching_engine_test
+repomix-output.xml
