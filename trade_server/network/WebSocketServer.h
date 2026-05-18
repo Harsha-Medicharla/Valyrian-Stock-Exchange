@@ -67,7 +67,6 @@ private:
     void unregisterEndpoint(std::uint32_t conn_id) noexcept;
     void registerLoop(uWS::Loop *loop, us_listen_socket_t *listenSocket) noexcept;
     void runCancelSubscriber() noexcept;
-    void runBalanceSyncSubscriber() noexcept;
     void runBalanceSyncSubscriberImpl(BalanceCache &cache) noexcept;
 
 public:

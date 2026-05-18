@@ -137,8 +137,32 @@ public:
         if (amount <= 0)
             return;
         BalanceEntry &be = balances_[static_cast<std::size_t>(userId) % kMaxUsers];
-        be.blocked.fetch_sub(amount, std::memory_order_release);
-        be.available.fetch_add(amount, std::memory_order_release);
+        
+        int64_t current_blocked = be.blocked.load(std::memory_order_relaxed);
+        int64_t actual_to_sub;
+        
+        while (true) {
+            // Recalculate safely inside the loop iteration
+            if (current_blocked < amount) {
+                actual_to_sub = current_blocked;
+            } else {
+                actual_to_sub = amount;
+            }
+            
+            // This transaction ONLY succeeds if no other thread changed 'blocked' in the background
+            if (be.blocked.compare_exchange_weak(
+                    current_blocked, 
+                    current_blocked - actual_to_sub, 
+                    std::memory_order_release, 
+                    std::memory_order_relaxed)) 
+            {
+                break; // Success! State updated safely without ever dropping below 0
+            }
+            // If it fails, 'current_blocked' automatically reloads with the new state, and we retry safely
+        }
+        
+        // Add the exactly matched and subtracted amount back to available balance
+        be.available.fetch_add(actual_to_sub, std::memory_order_release);
     }
 
     void unblockHoldings(uint32_t userId, uint32_t symbolId, int32_t qty) noexcept
@@ -156,6 +180,14 @@ public:
             return;
         BalanceEntry &be = balances_[static_cast<std::size_t>(userId) % kMaxUsers];
         be.available.fetch_add(amount, std::memory_order_release);
+    }
+
+    void addHoldings(uint32_t userId, uint32_t symbolId, int32_t qty) noexcept
+    {
+        if (qty <= 0)
+            return;
+        HoldingsGroup::Slot &sl = holdingsSlot(userId, symbolId);
+        sl.available_qty.fetch_add(qty, std::memory_order_release);
     }
 
     void setBalance(uint32_t userId, int64_t available, int64_t blocked) noexcept

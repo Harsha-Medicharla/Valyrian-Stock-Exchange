@@ -23,6 +23,7 @@ private:
   TimeStamp time_stamp;
   WALSystem wal;
   bool isRecovering_{false};
+  bool inModify_{false};
 
   EventSPSC<OrderEvent> *orderQueue_{nullptr};
   EventSPSC<TradeEvent> *tradeQueue_{nullptr};
@@ -46,7 +47,7 @@ private:
                     Qty rem, TimeStamp action_ts) noexcept;
 
   void pushDbModify(OrderId oid, UserId uid, Side sd, OrderType ty, Price px, Qty qty,
-                    Qty rem, OrderState st, TimeStamp action_ts) noexcept;
+                  Qty rem, OrderState st, TimeStamp action_ts, Qty fill_qty_val = 0) noexcept;
 
 public:
   MatchingEngine(Symbol sym)
@@ -100,8 +101,7 @@ public:
     try
     {
       order = order_book_.requestAllocationOfOrder();
-      *order = {order_id, user_id, side, type, price, qty, qty, timestamp, OrderState::NEW, nullptr,
-                nullptr};
+      *order = {order_id, user_id, side, type, price, qty, qty, timestamp, OrderState::NEW, nullptr, nullptr};
     }
     catch (const std::exception &e)
     {
@@ -123,14 +123,10 @@ public:
       if (order->type == OrderType::MARKET || order->state == OrderState::FILLED ||
           order->state == OrderState::CANCELLED)
       {
-        if (!isRecovering_)
+        if (!isRecovering_ && !inModify_)
         {
-          try
-          {
-            wal.logInput(WalAction::ADD, order);
-          }
-          catch (const std::exception &e)
-          {
+          try { wal.logInput(WalAction::ADD, order); }
+          catch (const std::exception &e) {
             std::cerr << "[MatchingEngine] WAL Error in onNewOrder: " << e.what() << std::endl;
             order_book_.requestDeAllocationOfOrder(order);
             return false;
@@ -141,21 +137,16 @@ public:
       else
       {
         order_book_.insertOrder(order);
-        if (!isRecovering_)
+        if (!isRecovering_ && !inModify_)
         {
-          try
-          {
-            wal.logInput(WalAction::ADD, order);
-          }
-          catch (const std::exception &e)
-          {
+          try { wal.logInput(WalAction::ADD, order); }
+          catch (const std::exception &e) {
             std::cerr << "[MatchingEngine] WAL Error in onNewOrder: " << e.what() << std::endl;
             order_book_.removeOrder(order);
             return false;
           }
         }
       }
-
       return true;
     }
     catch (const std::exception &e)
@@ -218,19 +209,24 @@ public:
   bool onModifyOrder(OrderId order_id, Price new_price, Qty new_qty)
   {
     const TimeStamp action_ts = getCurrentWallTime();
+    if (!isRecovering_)
+    {
+      try { wal.logModify(order_id, new_price, new_qty); }
+      catch (const std::exception &e) {
+        std::cerr << "[MatchingEngine] WAL Error in onModifyOrder: " << e.what() << std::endl;
+        return false;
+      }
+    }
+
     try
     {
       Order *order = order_book_.findOrder(order_id);
-      if (!order)
-        return false;
+      if (!order) return false;
 
       if (new_price == order->price && new_qty < order->quantity)
       {
         Qty reduction_qty = order->quantity - new_qty;
-        if (order->remaining < reduction_qty)
-        {
-          return false;
-        }
+        if (order->remaining < reduction_qty) return false;
 
         order->quantity -= reduction_qty;
         order->remaining -= reduction_qty;
@@ -245,7 +241,7 @@ public:
           pushModifyAck(order_id, order->user_id, order->type, order->side, order->price,
                         order->quantity, order->remaining, order->state, action_ts);
           pushDbModify(order_id, order->user_id, order->side, order->type, order->price,
-                       order->quantity, order->remaining, order->state, action_ts);
+                       order->quantity, order->remaining, order->state, action_ts, -reduction_qty);
         }
         return true;
       }
@@ -255,11 +251,12 @@ public:
         Side side = order->side;
         OrderType type = order->type;
 
-        if (!onCancelOrder(order->order_id, action_ts))
-        {
-          return false;
-        }
+        if (!onCancelOrder(order->order_id, action_ts)) return false;
+        
+        inModify_ = true;
         bool success = onNewOrder(order_id, user, side, type, new_price, new_qty, action_ts);
+        inModify_ = false;
+
         if (success)
         {
           Order *placed = order_book_.findOrder(order_id);
@@ -268,7 +265,7 @@ public:
             pushModifyAck(order_id, placed->user_id, placed->type, placed->side, placed->price,
                           placed->quantity, placed->remaining, placed->state, action_ts);
             pushDbModify(order_id, placed->user_id, placed->side, placed->type, placed->price,
-                         placed->quantity, placed->remaining, placed->state, action_ts);
+                         placed->quantity, placed->remaining, placed->state, action_ts, placed->remaining);
           }
         }
         return success;
@@ -276,6 +273,7 @@ public:
     }
     catch (const std::exception &e)
     {
+      inModify_ = false;
       return false;
     }
   }
@@ -460,7 +458,7 @@ inline void MatchingEngine::pushDbCancel(OrderId oid, UserId uid, Side sd, Order
 }
 
 inline void MatchingEngine::pushDbModify(OrderId oid, UserId uid, Side sd, OrderType ty, Price px,
-                                         Qty qty, Qty rem, OrderState st, TimeStamp action_ts) noexcept
+                                         Qty qty, Qty rem, OrderState st, TimeStamp action_ts, Qty fill_qty_val) noexcept
 {
   if (!dbQueue_ || isRecovering_)
     return;
@@ -476,6 +474,8 @@ inline void MatchingEngine::pushDbModify(OrderId oid, UserId uid, Side sd, Order
   de.price = px;
   de.qty = qty;
   de.remaining = rem;
+  de.fill_price = 0;
+  de.fill_qty = fill_qty_val;
   de.timestamp = action_ts;
   (void)dbQueue_->tryPush(de);
 }

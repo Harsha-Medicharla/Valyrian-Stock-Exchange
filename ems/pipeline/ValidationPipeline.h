@@ -93,7 +93,6 @@ inline Decision ValidationPipeline::process(const RawOrder *o, RejectReason &r)
 
 inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noexcept
 {
-    // Fix: Bypass all basic validations for Cancellations and Modifications
     if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
 
     if (o->symbol_id >= marketState_.symbolCount())
@@ -120,7 +119,6 @@ inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noex
 
 inline bool ValidationPipeline::checkFatFingerNotional(const RawOrder *o) const noexcept
 {
-    // Fix: Bypass for cancels/modifications and market orders
     if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
     if (o->type == static_cast<uint8_t>(OrderType::MARKET)) return true;
     
@@ -140,7 +138,6 @@ inline bool ValidationPipeline::checkRateLimit(const RawOrder *o) noexcept
 
 inline bool ValidationPipeline::checkTickSize(const RawOrder *o) const noexcept
 {
-    // Fix: Bypass for cancels/modifications and market orders
     if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
     if (o->type == static_cast<uint8_t>(OrderType::MARKET)) return true;
     
@@ -154,8 +151,7 @@ inline bool ValidationPipeline::checkLotSize(const RawOrder *o) const noexcept
 
 inline bool ValidationPipeline::checkBalance(const RawOrder *o) noexcept
 {
-    if (o->cancel_flag != 0 || o->modify_flag != 0)
-        return true;
+    if (o->cancel_flag != 0 || o->modify_flag != 0) return true;
 
     if (o->side == 0)
     {

@@ -594,6 +594,14 @@ void WebSocketServer::runBalanceSyncSubscriberImpl(BalanceCache &cache) noexcept
                         if (amount > 0)
                             cache.addAvailable(userId, amount);
                     }
+                    else if (type == "DepositHoldings")
+                    {
+                        const uint32_t symId =
+                            static_cast<uint32_t>(msg["symbol_id"].asUInt());
+                        const int32_t qty = msg["qty"].asInt();
+                        if (qty > 0)
+                            cache.addHoldings(userId, symId, qty);
+                    }
                 }
             }
             if (reply)

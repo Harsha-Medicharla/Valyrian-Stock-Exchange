@@ -123,3 +123,80 @@ void AccountController::deposit(const drogon::HttpRequestPtr &req,
         callback(resp);
     }
 }
+
+void AccountController::depositHoldings(
+    const drogon::HttpRequestPtr &req,
+    std::function<void(const drogon::HttpResponsePtr &)> &&callback)
+{
+    const auto userId = SessionValidator::userId(req);
+    const auto body = req->getJsonObject();
+    if (!userId || !body || !body->isMember("symbol_id") || !body->isMember("qty"))
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    const uint32_t symbolId = (*body)["symbol_id"].asUInt();
+    const int32_t qty = (*body)["qty"].asInt();
+    if (qty <= 0)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    try
+    {
+        const auto db = PGPool::client();
+
+        // Verify the symbol exists
+        const auto symResult = db->execSqlSync(
+            "SELECT symbol_id FROM symbols WHERE symbol_id=$1 AND is_active=true",
+            symbolId);
+        if (symResult.empty())
+        {
+            auto resp = drogon::HttpResponse::newHttpResponse();
+            resp->setStatusCode(drogon::k404NotFound);
+            callback(resp);
+            return;
+        }
+
+        // Ensure a balances row exists (required by holdings FK)
+        db->execSqlSync(
+            "INSERT INTO balances (user_id, available, blocked) VALUES ($1, 0, 0) "
+            "ON CONFLICT (user_id) DO NOTHING",
+            *userId);
+
+        // Upsert holdings
+        db->execSqlSync(
+            "INSERT INTO holdings (user_id, symbol_id, available_qty, blocked_qty) "
+            "VALUES ($1, $2, $3, 0) "
+            "ON CONFLICT (user_id, symbol_id) DO UPDATE "
+            "SET available_qty = holdings.available_qty + $3",
+            *userId, symbolId, qty);
+
+        // Publish to trade_server so BalanceCache is updated immediately
+        Json::Value sync(Json::objectValue);
+        sync["type"] = "DepositHoldings";
+        sync["user_id"] = Json::UInt64(*userId);
+        sync["symbol_id"] = symbolId;
+        sync["qty"] = qty;
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        RedisPool::instance().publish("vse:balances:sync",
+                                      Json::writeString(writer, sync));
+
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k204NoContent);
+        callback(resp);
+    }
+    catch (...)
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k500InternalServerError);
+        callback(resp);
+    }
+}

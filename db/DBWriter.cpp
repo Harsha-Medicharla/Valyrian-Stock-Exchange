@@ -35,6 +35,34 @@ void DBWriter::flush()
                 }
             }
         }
+        else if (e.type == DBEventType::ORDER_MODIFIED)
+        {
+            if (e.fill_qty < 0)
+            {
+                const Qty reduction = -e.fill_qty;
+                if (e.side == Side::BUY)
+                {
+                    const int64_t unblockAmt = e.price * reduction;
+                    balanceCache_.unblockFunds(static_cast<uint32_t>(e.user_id), unblockAmt);
+                }
+                else
+                {
+                    balanceCache_.unblockHoldings(static_cast<uint32_t>(e.user_id), e.symbol_id, static_cast<int32_t>(reduction));
+                }
+            }
+            else if (e.fill_qty > 0)
+            {
+                if (e.side == Side::BUY)
+                {
+                    const int64_t blockAmt = e.price * e.fill_qty;
+                    (void)balanceCache_.tryBlockFunds(static_cast<uint32_t>(e.user_id), blockAmt);
+                }
+                else
+                {
+                    (void)balanceCache_.tryBlockHoldings(static_cast<uint32_t>(e.user_id), e.symbol_id, static_cast<int32_t>(e.fill_qty));
+                }
+            }
+        }
     }
     batch_.clear();
 }

@@ -28,4 +28,6 @@ COPY . .
 RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build --target trade_server_app api_server_app -j$(nproc)
 
+RUN mkdir -p /app/data
+
 CMD ["./build/trade_server/trade_server_app"]

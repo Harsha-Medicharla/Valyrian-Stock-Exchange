@@ -31,15 +31,19 @@ services:
     platform: linux/arm64
     build:
       context: .
+    working_dir: /app
     environment:
       VSE_PG_CONN: "host=postgres port=5432 dbname=vse user=vse password=vse"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       VSE_WS_PORT: 9001
       VSE_MDP_WS_PORT: 9002
+      VSE_WAL_DIR: "/app/data"  # Force WAL directory to write to the volume path
     ports:
       - "9001:9001"
       - "9002:9002"
+    volumes:
+      - trade_wal_data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,3 +71,4 @@ services:
 
 volumes:
   postgres_data:
+  trade_wal_data:
