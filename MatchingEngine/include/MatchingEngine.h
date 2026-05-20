@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 
 #include "OrderBook.h"
 #include "shared/types/Events.h"
@@ -10,7 +11,7 @@
 
 namespace vse::test
 {
-struct MatchingEnginePeer;
+  struct MatchingEnginePeer;
 }
 
 class MatchingEngine
@@ -28,6 +29,7 @@ private:
   EventSPSC<OrderEvent> *orderQueue_{nullptr};
   EventSPSC<TradeEvent> *tradeQueue_{nullptr};
   EventSPSC<DBEvent> *dbQueue_{nullptr};
+  EventSPSC<BookUpdateEvent> *bookUpdateQueue_{nullptr};
   uint32_t symbolId_{0};
 
   void match(Order *incoming_order, TimeStamp action_ts) noexcept;
@@ -47,19 +49,37 @@ private:
                     Qty rem, TimeStamp action_ts) noexcept;
 
   void pushDbModify(OrderId oid, UserId uid, Side sd, OrderType ty, Price px, Qty qty,
-                  Qty rem, OrderState st, TimeStamp action_ts, Qty fill_qty_val = 0) noexcept;
+                    Qty rem, OrderState st, TimeStamp action_ts, Qty fill_qty_val = 0) noexcept;
+
+  void pushBookUpdate(TimeStamp action_ts) noexcept;
+
+  static std::string walPathFor(Symbol sym)
+  {
+    const char *dir = std::getenv("VSE_WAL_DIR");
+    if (dir && dir[0] != '\0')
+    {
+      std::string path(dir);
+      if (!path.empty() && path.back() != '/')
+        path += '/';
+      path += "engine_";
+      path += std::to_string(sym);
+      return path;
+    }
+    return "engine_" + std::to_string(sym);
+  }
 
 public:
   MatchingEngine(Symbol sym)
       : order_book_(),
         symbol(sym),
         time_stamp(0),
-        wal("engine_" + std::to_string(sym)),
+        wal(walPathFor(sym)),
         isRecovering_(false)
   {
     isRecovering_ = true;
 
-    wal.recover([this](const LogEntry &entry) {
+    wal.recover([this](const LogEntry &entry)
+                {
       if (entry.action == WalAction::ADD)
       {
         this->onNewOrder(entry.data.order_id, entry.data.user_id, entry.data.side,
@@ -77,8 +97,7 @@ public:
       else if (entry.action == WalAction::TRADE)
       {
         // Trade log records advance WAL sequence numbers but are not replayed into the book.
-      }
-    });
+      } });
 
     isRecovering_ = false;
   }
@@ -86,12 +105,13 @@ public:
   ~MatchingEngine() = default;
 
   void setOutputQueues(uint32_t symbolId, EventSPSC<OrderEvent> &orderQ, EventSPSC<TradeEvent> &tradeQ,
-                       EventSPSC<DBEvent> &dbQ) noexcept
+                       EventSPSC<DBEvent> &dbQ, EventSPSC<BookUpdateEvent> &bookUpdateQ) noexcept
   {
     symbolId_ = symbolId;
     orderQueue_ = &orderQ;
     tradeQueue_ = &tradeQ;
     dbQueue_ = &dbQ;
+    bookUpdateQueue_ = &bookUpdateQ;
   }
 
   bool onNewOrder(OrderId order_id, UserId user_id, Side side, OrderType type, Price price, Qty qty,
@@ -125,8 +145,12 @@ public:
       {
         if (!isRecovering_ && !inModify_)
         {
-          try { wal.logInput(WalAction::ADD, order); }
-          catch (const std::exception &e) {
+          try
+          {
+            wal.logInput(WalAction::ADD, order);
+          }
+          catch (const std::exception &e)
+          {
             std::cerr << "[MatchingEngine] WAL Error in onNewOrder: " << e.what() << std::endl;
             order_book_.requestDeAllocationOfOrder(order);
             return false;
@@ -137,10 +161,15 @@ public:
       else
       {
         order_book_.insertOrder(order);
+        pushBookUpdate(action_ts);
         if (!isRecovering_ && !inModify_)
         {
-          try { wal.logInput(WalAction::ADD, order); }
-          catch (const std::exception &e) {
+          try
+          {
+            wal.logInput(WalAction::ADD, order);
+          }
+          catch (const std::exception &e)
+          {
             std::cerr << "[MatchingEngine] WAL Error in onNewOrder: " << e.what() << std::endl;
             order_book_.removeOrder(order);
             return false;
@@ -195,6 +224,7 @@ public:
 
       order_book_.removeOrder(order);
 
+      pushBookUpdate(action_ts);
       pushCancelAck(order_id, uid, st, rem, action_ts);
       pushDbCancel(order_id, uid, sd, ty, px, q, rem, action_ts);
 
@@ -211,8 +241,12 @@ public:
     const TimeStamp action_ts = getCurrentWallTime();
     if (!isRecovering_)
     {
-      try { wal.logModify(order_id, new_price, new_qty); }
-      catch (const std::exception &e) {
+      try
+      {
+        wal.logModify(order_id, new_price, new_qty);
+      }
+      catch (const std::exception &e)
+      {
         std::cerr << "[MatchingEngine] WAL Error in onModifyOrder: " << e.what() << std::endl;
         return false;
       }
@@ -221,12 +255,14 @@ public:
     try
     {
       Order *order = order_book_.findOrder(order_id);
-      if (!order) return false;
+      if (!order)
+        return false;
 
       if (new_price == order->price && new_qty < order->quantity)
       {
         Qty reduction_qty = order->quantity - new_qty;
-        if (order->remaining < reduction_qty) return false;
+        if (order->remaining < reduction_qty)
+          return false;
 
         order->quantity -= reduction_qty;
         order->remaining -= reduction_qty;
@@ -235,9 +271,11 @@ public:
         if (order->state == OrderState::FILLED)
         {
           order_book_.removeOrder(order);
+          pushBookUpdate(action_ts);
         }
         else
         {
+          pushBookUpdate(action_ts);
           pushModifyAck(order_id, order->user_id, order->type, order->side, order->price,
                         order->quantity, order->remaining, order->state, action_ts);
           pushDbModify(order_id, order->user_id, order->side, order->type, order->price,
@@ -251,8 +289,9 @@ public:
         Side side = order->side;
         OrderType type = order->type;
 
-        if (!onCancelOrder(order->order_id, action_ts)) return false;
-        
+        if (!onCancelOrder(order->order_id, action_ts))
+          return false;
+
         inModify_ = true;
         bool success = onNewOrder(order_id, user, side, type, new_price, new_qty, action_ts);
         inModify_ = false;
@@ -330,6 +369,18 @@ inline void MatchingEngine::pushFillOrderEvent(const Order *o, Price fill_price,
   ev.sequence = 0;
   ev.timestamp = action_ts;
   (void)orderQueue_->tryPush(ev);
+}
+
+inline void MatchingEngine::pushBookUpdate(TimeStamp action_ts) noexcept
+{
+  if (!bookUpdateQueue_ || isRecovering_)
+    return;
+  BookUpdateEvent ev{};
+  ev.symbol_id = symbolId_;
+  ev.best_bid = order_book_.bestBidPrice();
+  ev.best_ask = order_book_.bestAskPrice();
+  ev.timestamp = action_ts;
+  (void)bookUpdateQueue_->tryPush(ev);
 }
 
 inline void MatchingEngine::emitPostTradeEvents(Order *incoming_order, const Order &resting_snap,
@@ -527,6 +578,7 @@ inline void MatchingEngine::match(Order *incoming_order, TimeStamp action_ts) no
       const Qty resting_remaining = resting_order->remaining;
 
       order_book_.removeOrder(resting_order);
+      pushBookUpdate(action_ts);
       pushCancelAck(resting_id, resting_uid, OrderState::CANCELLED, resting_remaining, action_ts);
       pushDbCancel(resting_id, resting_uid, resting_side, resting_type, resting_price, resting_qty,
                    resting_remaining, action_ts);

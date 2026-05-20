@@ -137,8 +137,15 @@ void AuthController::signup(const drogon::HttpRequestPtr &req,
             "INSERT INTO users (email, password_hash, name) VALUES ($1,$2,$3) "
             "RETURNING user_id",
             email, passwordHash, name);
+        const uint64_t newUserId = result[0]["user_id"].as<uint64_t>();
+        // Create the balances row atomically with user creation so the account is
+        // immediately tradeable after a deposit.
+        db->execSqlSync(
+            "INSERT INTO balances (user_id, available, blocked) VALUES ($1, 0, 0) "
+            "ON CONFLICT (user_id) DO NOTHING",
+            newUserId);
         Json::Value out(Json::objectValue);
-        out["user_id"] = Json::UInt64(result[0]["user_id"].as<uint64_t>());
+        out["user_id"] = Json::UInt64(newUserId);
         auto resp = drogon::HttpResponse::newHttpJsonResponse(out);
         resp->setStatusCode(drogon::k201Created);
         callback(resp);

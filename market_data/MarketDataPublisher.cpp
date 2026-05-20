@@ -105,6 +105,19 @@ void MarketDataPublisher::processTradeEvent(uint32_t sym, const TradeEvent &ev)
     }
 }
 
+void MarketDataPublisher::processBookUpdateEvent(uint32_t sym, const BookUpdateEvent &ev)
+{
+    lastBestBid_[sym].store(ev.best_bid, std::memory_order_relaxed);
+    lastBestAsk_[sym].store(ev.best_ask, std::memory_order_relaxed);
+
+    std::string quoteJson =
+        "{\"type\":\"quote\",\"symbol_id\":" + std::to_string(sym) +
+        ",\"best_bid\":" + std::to_string(ev.best_bid) +
+        ",\"best_ask\":" + std::to_string(ev.best_ask) +
+        ",\"ts\":" + std::to_string(ev.timestamp) + "}";
+    publishToTopic(topicForSymbol(sym), std::move(quoteJson));
+}
+
 void MarketDataPublisher::run()
 {
     if (const auto core = vse::threads::coreForRole("FeedPublisher"))
@@ -115,12 +128,22 @@ void MarketDataPublisher::run()
         bool anyWork = false;
         for (uint32_t sym = 0; sym < numSymbols_; ++sym)
         {
-            EventSPSC<TradeEvent> &q = (*tradeQueues_)[sym];
-            while (TradeEvent *ev = q.front())
+            EventSPSC<TradeEvent> &tq = (*tradeQueues_)[sym];
+            while (TradeEvent *ev = tq.front())
             {
                 processTradeEvent(sym, *ev);
-                q.pop();
+                tq.pop();
                 anyWork = true;
+            }
+            if (bookUpdateQueues_)
+            {
+                EventSPSC<BookUpdateEvent> &bq = (*bookUpdateQueues_)[sym];
+                while (BookUpdateEvent *ev = bq.front())
+                {
+                    processBookUpdateEvent(sym, *ev);
+                    bq.pop();
+                    anyWork = true;
+                }
             }
         }
         if (!anyWork)

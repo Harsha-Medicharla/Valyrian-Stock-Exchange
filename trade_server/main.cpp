@@ -113,8 +113,8 @@ int main()
 
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), static_cast<uint32_t>(ems.numSymbols()),
                       ems.balanceCache(), pgConn);
-    MarketDataPublisher marketData(ems.tradeQueues(), static_cast<uint32_t>(ems.numSymbols()),
-                                   mdpPort);
+    MarketDataPublisher marketData(ems.tradeQueues(), ems.bookUpdateQueues(),
+                                   static_cast<uint32_t>(ems.numSymbols()), mdpPort);
     WebSocketServer ws(ems, wsPort);
     RespThread resp(ems, ws);
     activeWs = &ws;
