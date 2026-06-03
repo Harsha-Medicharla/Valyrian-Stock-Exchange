@@ -131,8 +131,30 @@ public:
     {
       const TimeStamp action_ts = timestamp != 0 ? timestamp : getCurrentWallTime();
       order->timestamp = action_ts;
+      
+      // the below few commented code is to check the actual order match latency!!!
+      // uncomment if needed
+      // auto start = std::chrono::high_resolution_clock::now();
+
       match(order, action_ts);
       updateOrderState(order);
+
+      // auto end = std::chrono::high_resolution_clock::now();
+      // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+      // // Accumulate metrics
+      // static uint64_t total_duration = 0;
+      // static uint64_t match_count = 0;
+      // total_duration += duration;
+      // match_count++;
+
+      // // Only print to the terminal once every 10 orders
+      // if (match_count % 10 == 0) {
+      //     std::fprintf(stderr, "[Internal Metric] Avg Match Time for last 10 orders: %llu ns\n", 
+      //                 (unsigned long long)(total_duration / 10));
+      //     std::fflush(stderr); // CRITICAL: Force Docker to print it immediately
+      //     total_duration = 0; // Reset
+      // }
 
       if (order->type == OrderType::MARKET && order->remaining > 0)
       {
