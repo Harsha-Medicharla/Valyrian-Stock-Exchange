@@ -24,106 +24,93 @@
 #include "api_server/db/RedisPool.h"
 #include <drogon/drogon.h>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared mock and helper infrastructure
-// ─────────────────────────────────────────────────────────────────────────────
-
 namespace
 {
 
-struct MockTradeRow
-{
-    uint32_t symbol_id;
-    uint64_t buyer_order_id;
-    uint64_t seller_order_id;
-    int64_t  price;
-    int64_t  qty;
-};
-
-// Thread-safe mock database. Intercepts DBWriter output so tests can assert
-// on order states and trades without a real PostgreSQL connection.
-class MockPGWriter final : public IDBWriterBackend
-{
-public:
-    std::mutex mutex;
-    std::vector<DBEvent> events;
-    std::vector<MockTradeRow> trades;
-    std::unordered_map<uint64_t, OrderState> orders;
-
-    void writeBatch(const std::vector<DBEvent> &batch) override
+    struct MockTradeRow
     {
-        std::lock_guard lock(mutex);
-        for (const DBEvent &ev : batch)
+        uint32_t symbol_id;
+        uint64_t buyer_order_id;
+        uint64_t seller_order_id;
+        int64_t price;
+        int64_t qty;
+    };
+
+    class MockPGWriter final : public IDBWriterBackend
+    {
+    public:
+        std::mutex mutex;
+        std::vector<DBEvent> events;
+        std::vector<MockTradeRow> trades;
+        std::unordered_map<uint64_t, OrderState> orders;
+
+        void writeBatch(const std::vector<DBEvent> &batch) override
         {
-            events.push_back(ev);
-            if (ev.type == DBEventType::ORDER_ACCEPTED)
-                orders[ev.order_id] = OrderState::NEW;
-            else if (ev.type == DBEventType::ORDER_FILLED)
+            std::lock_guard lock(mutex);
+            for (const DBEvent &ev : batch)
             {
-                orders[ev.order_id] = ev.state;
-                if (ev.side == Side::BUY)
-                    trades.push_back(MockTradeRow{ev.symbol_id, ev.order_id,
-                                                  ev.peer_order_id, ev.fill_price,
-                                                  ev.fill_qty});
+                events.push_back(ev);
+                if (ev.type == DBEventType::ORDER_ACCEPTED)
+                    orders[ev.order_id] = OrderState::NEW;
+                else if (ev.type == DBEventType::ORDER_FILLED)
+                {
+                    orders[ev.order_id] = ev.state;
+                    if (ev.side == Side::BUY)
+                        trades.push_back(MockTradeRow{ev.symbol_id, ev.order_id,
+                                                      ev.peer_order_id, ev.fill_price,
+                                                      ev.fill_qty});
+                }
+                else if (ev.type == DBEventType::ORDER_CANCELLED)
+                    orders[ev.order_id] = OrderState::CANCELLED;
             }
-            else if (ev.type == DBEventType::ORDER_CANCELLED)
-                orders[ev.order_id] = OrderState::CANCELLED;
         }
-    }
 
-    void reset()
+        void reset()
+        {
+            std::lock_guard lock(mutex);
+            events.clear();
+            trades.clear();
+            orders.clear();
+        }
+    };
+
+    RawOrder makeOrder(uint64_t seq, uint64_t oid, uint32_t uid, uint32_t sym,
+                       Side side, OrderType type, int64_t px, uint32_t qty)
     {
-        std::lock_guard lock(mutex);
-        events.clear();
-        trades.clear();
-        orders.clear();
+        RawOrder o{};
+        o.sequence = seq;
+        o.order_id = oid;
+        o.user_id = uid;
+        o.symbol_id = sym;
+        o.price = px;
+        o.qty = qty;
+        o.side = static_cast<uint8_t>(side);
+        o.type = static_cast<uint8_t>(type);
+        o.timestamp = seq;
+        o.cancel_flag = 0;
+        o.modify_flag = 0;
+        return o;
     }
-};
 
-// Build a limit or market RawOrder ready for enqueue.
-RawOrder makeOrder(uint64_t seq, uint64_t oid, uint32_t uid, uint32_t sym,
-                   Side side, OrderType type, int64_t px, uint32_t qty)
-{
-    RawOrder o{};
-    o.sequence    = seq;
-    o.order_id    = oid;
-    o.user_id     = uid;
-    o.symbol_id   = sym;
-    o.price       = px;
-    o.qty         = qty;
-    o.side        = static_cast<uint8_t>(side);
-    o.type        = static_cast<uint8_t>(type);
-    o.timestamp   = seq;
-    o.cancel_flag = 0;
-    o.modify_flag = 0;
-    return o;
+    RawOrder makeCancel(uint64_t seq, uint64_t target_oid)
+    {
+        RawOrder o{};
+        o.sequence = seq;
+        o.order_id = target_oid;
+        o.cancel_flag = 1;
+        o.timestamp = seq;
+        return o;
+    }
+
+    inline void clearWalFiles()
+    {
+        std::remove("engine_0.wal");
+        std::remove("engine_0.trades");
+        std::remove("/app/wal/engine_0.wal");
+        std::remove("/app/wal/engine_0.trades");
+    }
+
 }
-
-// Build a cancel request (cancel_flag=1, order_id identifies the target).
-RawOrder makeCancel(uint64_t seq, uint64_t target_oid)
-{
-    RawOrder o{};
-    o.sequence    = seq;
-    o.order_id    = target_oid;
-    o.cancel_flag = 1;
-    o.timestamp   = seq;
-    return o;
-}
-
-inline void clearWalFiles()
-{
-    std::remove("engine_0.wal");
-    std::remove("engine_0.trades");
-    // Also clean Docker paths to avoid cross-environment test pollution.
-    std::remove("/app/wal/engine_0.wal");
-    std::remove("/app/wal/engine_0.trades");
-}
-
-} // namespace
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TradingSystemTest fixture — full pipeline, MockPGWriter as backend
-// ─────────────────────────────────────────────────────────────────────────────
 
 class TradingSystemTest : public ::testing::Test
 {
@@ -145,8 +132,8 @@ protected:
 TEST_F(TradingSystemTest, PipelineAcceptsMatchesAndSettles)
 {
     EMSCore ems(1, 1, symbolCache);
-    ems.balanceCache().setHoldings(1, 0, 100, 0); // Seller: 100 shares
-    ems.balanceCache().setBalance(2, 10000, 0);   // Buyer:  $10,000
+    ems.balanceCache().setHoldings(1, 0, 100, 0);
+    ems.balanceCache().setBalance(2, 10000, 0);
 
     MockPGWriter mockWriter;
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
@@ -156,30 +143,37 @@ TEST_F(TradingSystemTest, PipelineAcceptsMatchesAndSettles)
     WebSocketServer ws(ems, 0, false);
     RespThread resp(ems, ws);
 
-    ems.start(); dbWriter.start(); marketData.start(); resp.start();
+    ems.start();
+    dbWriter.start();
+    marketData.start();
+    resp.start();
 
     ASSERT_TRUE(ems.spscQueue(0).enqueue(
         makeOrder(1, 101, 1, 0, Side::SELL, OrderType::LIMIT, 100, 10)));
     ASSERT_TRUE(ems.spscQueue(0).enqueue(
-        makeOrder(2, 102, 2, 0, Side::BUY,  OrderType::LIMIT, 100, 10)));
+        makeOrder(2, 102, 2, 0, Side::BUY, OrderType::LIMIT, 100, 10)));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    resp.stop();    resp.join();
-    marketData.stop(); marketData.join();
-    dbWriter.stop(); dbWriter.join();
-    ems.stop();     ems.join();
+    resp.stop();
+    resp.join();
+    marketData.stop();
+    marketData.join();
+    dbWriter.stop();
+    dbWriter.join();
+    ems.stop();
+    ems.join();
 
     std::lock_guard lock(mockWriter.mutex);
     ASSERT_EQ(mockWriter.trades.size(), 1u);
     EXPECT_EQ(mockWriter.trades[0].price, 100);
-    EXPECT_EQ(mockWriter.trades[0].qty,   10);
+    EXPECT_EQ(mockWriter.trades[0].qty, 10);
     EXPECT_EQ(mockWriter.orders[101], OrderState::FILLED);
     EXPECT_EQ(mockWriter.orders[102], OrderState::FILLED);
-    EXPECT_EQ(ems.balanceCache().availableBalance(2),    9000); // 10000 - 1000
-    EXPECT_EQ(ems.balanceCache().availableBalance(1),    1000); // 0     + 1000
-    EXPECT_EQ(ems.balanceCache().availableHoldings(2, 0),  10); // 0     + 10
-    EXPECT_EQ(ems.balanceCache().availableHoldings(1, 0),  90); // 100   - 10
+    EXPECT_EQ(ems.balanceCache().availableBalance(2), 9000);   // 10000 - 1000
+    EXPECT_EQ(ems.balanceCache().availableBalance(1), 1000);   // 0     + 1000
+    EXPECT_EQ(ems.balanceCache().availableHoldings(2, 0), 10); // 0     + 10
+    EXPECT_EQ(ems.balanceCache().availableHoldings(1, 0), 90); // 100   - 10
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,29 +188,31 @@ TEST_F(TradingSystemTest, DeterministicBookSweep)
     MockPGWriter mockWriter;
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
                       ems.balanceCache(), mockWriter);
-    ems.start(); dbWriter.start();
+    ems.start();
+    dbWriter.start();
 
-    // Seller builds a three-level ask ladder
     ems.spscQueue(0).enqueue(makeOrder(1, 1, 1, 0, Side::SELL, OrderType::LIMIT, 100, 50));
     ems.spscQueue(0).enqueue(makeOrder(2, 2, 1, 0, Side::SELL, OrderType::LIMIT, 101, 50));
     ems.spscQueue(0).enqueue(makeOrder(3, 3, 1, 0, Side::SELL, OrderType::LIMIT, 102, 50));
 
-    // Buyer sweeps 120 shares with a market order
     ems.spscQueue(0).enqueue(makeOrder(4, 4, 2, 0, Side::BUY, OrderType::MARKET, 0, 120));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    dbWriter.stop(); ems.stop(); dbWriter.join(); ems.join();
+    dbWriter.stop();
+    ems.stop();
+    dbWriter.join();
+    ems.join();
 
     std::lock_guard lock(mockWriter.mutex);
     ASSERT_EQ(mockWriter.trades.size(), 3u);
     EXPECT_EQ(mockWriter.trades[0].seller_order_id, 1u);
-    EXPECT_EQ(mockWriter.trades[0].qty,   50);
+    EXPECT_EQ(mockWriter.trades[0].qty, 50);
     EXPECT_EQ(mockWriter.trades[0].price, 100);
     EXPECT_EQ(mockWriter.trades[1].seller_order_id, 2u);
-    EXPECT_EQ(mockWriter.trades[1].qty,   50);
+    EXPECT_EQ(mockWriter.trades[1].qty, 50);
     EXPECT_EQ(mockWriter.trades[1].price, 101);
     EXPECT_EQ(mockWriter.trades[2].seller_order_id, 3u);
-    EXPECT_EQ(mockWriter.trades[2].qty,   20); // only 20 needed to complete 120
+    EXPECT_EQ(mockWriter.trades[2].qty, 20);
     EXPECT_EQ(mockWriter.trades[2].price, 102);
     EXPECT_EQ(mockWriter.orders[1], OrderState::FILLED);
     EXPECT_EQ(mockWriter.orders[2], OrderState::FILLED);
@@ -230,22 +226,24 @@ TEST_F(TradingSystemTest, DeterministicBookSweep)
 TEST_F(TradingSystemTest, RejectsOrdersWithoutSufficientFunds)
 {
     EMSCore ems(1, 1, symbolCache);
-    ems.balanceCache().setBalance(1, 50, 0); // User has only $50
+    ems.balanceCache().setBalance(1, 50, 0);
 
     MockPGWriter mockWriter;
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
                       ems.balanceCache(), mockWriter);
-    ems.start(); dbWriter.start();
+    ems.start();
+    dbWriter.start();
 
-    // Try to buy $100 worth of stock with only $50 available
     ASSERT_TRUE(ems.spscQueue(0).enqueue(
         makeOrder(1, 101, 1, 0, Side::BUY, OrderType::LIMIT, 100, 1)));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    dbWriter.stop(); ems.stop(); dbWriter.join(); ems.join();
+    dbWriter.stop();
+    ems.stop();
+    dbWriter.join();
+    ems.join();
 
     std::lock_guard lock(mockWriter.mutex);
-    // Rejected in EMS validation pipeline — must never reach the DB.
     EXPECT_TRUE(mockWriter.orders.empty());
     EXPECT_TRUE(mockWriter.trades.empty());
 }
@@ -262,22 +260,21 @@ TEST_F(TradingSystemTest, SelfTradePreventionCancelsRestingOrder)
     MockPGWriter mockWriter;
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
                       ems.balanceCache(), mockWriter);
-    ems.start(); dbWriter.start();
+    ems.start();
+    dbWriter.start();
 
-    // User 1 places a SELL, then tries to BUY their own resting order.
     ems.spscQueue(0).enqueue(makeOrder(1, 201, 1, 0, Side::SELL, OrderType::LIMIT, 100, 10));
-    ems.spscQueue(0).enqueue(makeOrder(2, 202, 1, 0, Side::BUY,  OrderType::LIMIT, 100, 10));
+    ems.spscQueue(0).enqueue(makeOrder(2, 202, 1, 0, Side::BUY, OrderType::LIMIT, 100, 10));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    dbWriter.stop(); ems.stop(); dbWriter.join(); ems.join();
+    dbWriter.stop();
+    ems.stop();
+    dbWriter.join();
+    ems.join();
 
     std::lock_guard lock(mockWriter.mutex);
-    // No trade should have executed.
     EXPECT_TRUE(mockWriter.trades.empty());
-    // Resting order 201 must be cancelled by the engine.
     EXPECT_EQ(mockWriter.orders[201], OrderState::CANCELLED);
-    // Incoming order 202 was accepted by the EMS (ORDER_ACCEPTED) and rests
-    // in the book as NEW after its self-trade target was removed.
     EXPECT_EQ(mockWriter.orders[202], OrderState::NEW);
 }
 
@@ -292,21 +289,23 @@ TEST_F(TradingSystemTest, CancelOrderReleasesBlockedFunds)
     MockPGWriter mockWriter;
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
                       ems.balanceCache(), mockWriter);
-    ems.start(); dbWriter.start();
+    ems.start();
+    dbWriter.start();
 
-    // Place a buy order that blocks $1,000.
     ems.spscQueue(0).enqueue(makeOrder(1, 301, 1, 0, Side::BUY, OrderType::LIMIT, 100, 10));
     // Immediately cancel it.
     ems.spscQueue(0).enqueue(makeCancel(2, 301));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    dbWriter.stop(); ems.stop(); dbWriter.join(); ems.join();
+    dbWriter.stop();
+    ems.stop();
+    dbWriter.join();
+    ems.join();
 
     std::lock_guard lock(mockWriter.mutex);
     EXPECT_EQ(mockWriter.orders[301], OrderState::CANCELLED);
-    // All funds must be returned to available.
     EXPECT_EQ(ems.balanceCache().availableBalance(1), 5000);
-    EXPECT_EQ(ems.balanceCache().blockedBalance(1),   0);
+    EXPECT_EQ(ems.balanceCache().blockedBalance(1), 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -322,28 +321,28 @@ TEST_F(TradingSystemTest, PriceTimePriorityBookSweep)
     MockPGWriter mockWriter;
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
                       ems.balanceCache(), mockWriter);
-    ems.start(); dbWriter.start();
+    ems.start();
+    dbWriter.start();
 
-    // Seller 1 at $100 (best, first in time)
     ems.spscQueue(0).enqueue(makeOrder(1, 401, 1, 0, Side::SELL, OrderType::LIMIT, 100, 50));
-    // Seller 2 at $100 (best, second in time)
     ems.spscQueue(0).enqueue(makeOrder(2, 402, 2, 0, Side::SELL, OrderType::LIMIT, 100, 50));
-    // Seller 1 at $101 (worse price)
     ems.spscQueue(0).enqueue(makeOrder(3, 403, 1, 0, Side::SELL, OrderType::LIMIT, 101, 50));
-    // Buyer sweeps 120 shares with a market order
     ems.spscQueue(0).enqueue(makeOrder(4, 404, 3, 0, Side::BUY, OrderType::MARKET, 0, 120));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    dbWriter.stop(); ems.stop(); dbWriter.join(); ems.join();
+    dbWriter.stop();
+    ems.stop();
+    dbWriter.join();
+    ems.join();
 
     std::lock_guard lock(mockWriter.mutex);
     ASSERT_EQ(mockWriter.trades.size(), 3u);
-    EXPECT_EQ(mockWriter.trades[0].seller_order_id, 401u); // Time priority
-    EXPECT_EQ(mockWriter.trades[0].qty,   50);
-    EXPECT_EQ(mockWriter.trades[1].seller_order_id, 402u); // Time priority
-    EXPECT_EQ(mockWriter.trades[1].qty,   50);
-    EXPECT_EQ(mockWriter.trades[2].seller_order_id, 403u); // Worse price
-    EXPECT_EQ(mockWriter.trades[2].qty,   20);             // Only 20 needed
+    EXPECT_EQ(mockWriter.trades[0].seller_order_id, 401u);
+    EXPECT_EQ(mockWriter.trades[0].qty, 50);
+    EXPECT_EQ(mockWriter.trades[1].seller_order_id, 402u);
+    EXPECT_EQ(mockWriter.trades[1].qty, 50);
+    EXPECT_EQ(mockWriter.trades[2].seller_order_id, 403u);
+    EXPECT_EQ(mockWriter.trades[2].qty, 20);
     EXPECT_EQ(mockWriter.trades[2].price, 101);
     EXPECT_EQ(mockWriter.orders[401], OrderState::FILLED);
     EXPECT_EQ(mockWriter.orders[402], OrderState::FILLED);
@@ -356,40 +355,37 @@ TEST_F(TradingSystemTest, PriceTimePriorityBookSweep)
 // ─────────────────────────────────────────────────────────────────────────────
 TEST_F(TradingSystemTest, CrashAndRecoveryDeterminism)
 {
-    // Phase 1: Place a resting SELL order, then simulate a crash.
     {
         EMSCore ems(1, 1, symbolCache);
         ems.balanceCache().setHoldings(1, 0, 100, 0);
         ems.start();
-        // sequence=1, order_id=5001
         ems.spscQueue(0).enqueue(makeOrder(1, 5001, 1, 0, Side::SELL, OrderType::LIMIT, 100, 50));
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        ems.stop(); ems.join();
+        ems.stop();
+        ems.join();
     }
-    // WAL file now exists on disk. Phase 2: recover and match against the
-    // resting order. The recovered Dispatcher's nextServerSequence_ starts
-    // at 1, so the post-recovery order must have sequence=1.
 
     MockPGWriter mockWriter;
     EMSCore recoveredEms(1, 1, symbolCache);
-    // Re-establish pre-crash accounting truth.
-    recoveredEms.balanceCache().setHoldings(1, 0, 50, 50); // 50 available, 50 blocked
+    recoveredEms.balanceCache().setHoldings(1, 0, 50, 50);
     recoveredEms.balanceCache().setBalance(2, 5000, 0);
 
     DBWriter dbWriter(recoveredEms.ingressDbQueues(), recoveredEms.engineDbQueues(),
                       1, recoveredEms.balanceCache(), mockWriter);
-    recoveredEms.start(); dbWriter.start();
+    recoveredEms.start();
+    dbWriter.start();
 
-    // sequence MUST be 1 — the recovered Dispatcher is waiting for sequence 1.
     recoveredEms.spscQueue(0).enqueue(makeOrder(1, 5002, 2, 0, Side::BUY, OrderType::LIMIT, 100, 50));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
-    recoveredEms.stop(); dbWriter.stop();
-    recoveredEms.join(); dbWriter.join();
+    recoveredEms.stop();
+    dbWriter.stop();
+    recoveredEms.join();
+    dbWriter.join();
 
     std::lock_guard lock(mockWriter.mutex);
     ASSERT_EQ(mockWriter.trades.size(), 1u);
-    EXPECT_EQ(mockWriter.trades[0].qty,   50);
+    EXPECT_EQ(mockWriter.trades[0].qty, 50);
     EXPECT_EQ(mockWriter.trades[0].price, 100);
 }
 
@@ -405,28 +401,29 @@ TEST_F(TradingSystemTest, HighThroughputDeterminismNoDataLoss)
     MockPGWriter mockWriter;
     DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), 1,
                       ems.balanceCache(), mockWriter);
-    ems.start(); dbWriter.start();
+    ems.start();
+    dbWriter.start();
 
-    // Odd sequences = Sellers (resting LIMIT @ 100).
-    // Even sequences = Buyers (crossing LIMIT @ 100).
-    // Each pair produces exactly one trade.
     const int ORDER_COUNT = 10000;
     for (int i = 1; i <= ORDER_COUNT; ++i)
     {
         if (i % 2 != 0)
             while (!ems.spscQueue(0).enqueue(
-                makeOrder(i, i, 1, 0, Side::SELL, OrderType::LIMIT, 100, 1)));
+                makeOrder(i, i, 1, 0, Side::SELL, OrderType::LIMIT, 100, 1)))
+                ;
         else
             while (!ems.spscQueue(0).enqueue(
-                makeOrder(i, i, 2, 0, Side::BUY, OrderType::LIMIT, 100, 1)));
+                makeOrder(i, i, 2, 0, Side::BUY, OrderType::LIMIT, 100, 1)))
+                ;
     }
 
-    // Give DBWriter time to flush all batches.
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    dbWriter.stop(); ems.stop(); dbWriter.join(); ems.join();
+    dbWriter.stop();
+    ems.stop();
+    dbWriter.join();
+    ems.join();
 
     std::lock_guard lock(mockWriter.mutex);
-    // 5,000 crossing pairs → exactly 5,000 trades, zero drops.
     EXPECT_EQ(mockWriter.trades.size(), 5000u);
     EXPECT_EQ(mockWriter.orders.size(), 10000u);
 }
@@ -441,7 +438,7 @@ TEST(EMSModuleTest, BalanceLocking)
     bc.setBalance(10, 5000, 0);
     EXPECT_TRUE(bc.tryBlockFunds(10, 2000));
     EXPECT_EQ(bc.availableBalance(10), 3000);
-    EXPECT_EQ(bc.blockedBalance(10),   2000);
+    EXPECT_EQ(bc.blockedBalance(10), 2000);
     bc.unblockFunds(10, 2000);
     EXPECT_EQ(bc.availableBalance(10), 5000);
 }
@@ -458,9 +455,9 @@ TEST(EMSModuleTest, PipelineValidation)
 
     RawOrder marketOrder{};
     marketOrder.symbol_id = 0;
-    marketOrder.type      = static_cast<uint8_t>(OrderType::MARKET);
-    marketOrder.price     = 0;
-    marketOrder.qty       = 10;
+    marketOrder.type = static_cast<uint8_t>(OrderType::MARKET);
+    marketOrder.price = 0;
+    marketOrder.qty = 10;
     bc.setBalance(1, 10000, 0);
 
     EXPECT_EQ(pipeline.process(&marketOrder, reason), Decision::ACCEPT);
@@ -479,13 +476,16 @@ TEST(TradeServerModuleTest, ConnTableLogic)
 TEST(DBWriterModuleTest, QueueHandling)
 {
     BalanceCache bc(1);
-    class NullBackend final : public IDBWriterBackend {
+    class NullBackend final : public IDBWriterBackend
+    {
     public:
-        void writeBatch(const std::vector<DBEvent>&) override {}
+        void writeBatch(const std::vector<DBEvent> &) override {}
     };
     NullBackend backend;
-    std::vector<EventSPSC<DBEvent>> inQ; inQ.emplace_back(128);
-    std::vector<EventSPSC<DBEvent>> enQ; enQ.emplace_back(128);
+    std::vector<EventSPSC<DBEvent>> inQ;
+    inQ.emplace_back(128);
+    std::vector<EventSPSC<DBEvent>> enQ;
+    enQ.emplace_back(128);
     DBWriter writer(inQ, enQ, 1, bc, backend);
     SUCCEED();
 }

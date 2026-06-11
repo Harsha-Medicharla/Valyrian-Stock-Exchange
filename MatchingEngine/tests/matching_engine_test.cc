@@ -2,75 +2,71 @@
 #include <cstdlib>
 #include "VseTestPeer.h"
 
-static std::string walPath(int id) {
+static std::string walPath(int id)
+{
     return "test_wal_" + std::to_string(id);
 }
-
-
-
 
 ///////////////////////////////////////////////////////////////////////////////////
 // ---------------------------independent functions test---------------------------
 ///////////////////////////////////////////////////////////////////////////////////
 
-
-
 // test 1
 // Allocate returns valid order
-TEST(PoolTest, AllocateOrderReturnsNonNull) {
+TEST(PoolTest, AllocateOrderReturnsNonNull)
+{
     OrderBook *book = new OrderBook();
 
-    Order* o = book->requestAllocationOfOrder();
+    Order *o = book->requestAllocationOfOrder();
     ASSERT_NE(o, nullptr);
 }
 
-
 // test 2
 // Deallocation allows reuse
-TEST(PoolTest, DeallocateAndReuseOrder) {
+TEST(PoolTest, DeallocateAndReuseOrder)
+{
     OrderBook *book = new OrderBook();
 
-    Order* o1 = book->requestAllocationOfOrder();
+    Order *o1 = book->requestAllocationOfOrder();
     ASSERT_NE(o1, nullptr);
 
     book->requestDeAllocationOfOrder(o1);
 
-    Order* o2 = book->requestAllocationOfOrder();
+    Order *o2 = book->requestAllocationOfOrder();
     ASSERT_NE(o2, nullptr);
 
     // Pool should reuse memory
     EXPECT_EQ(o1, o2);
 }
 
-
 // test 3
 // Multiple allocations are distinct
-TEST(PoolTest, MultipleAllocationsDistinct) {
+TEST(PoolTest, MultipleAllocationsDistinct)
+{
     OrderBook *book = new OrderBook();
 
-    Order* o1 = book->requestAllocationOfOrder();
-    Order* o2 = book->requestAllocationOfOrder();
+    Order *o1 = book->requestAllocationOfOrder();
+    Order *o2 = book->requestAllocationOfOrder();
 
     ASSERT_NE(o1, nullptr);
     ASSERT_NE(o2, nullptr);
     EXPECT_NE(o1, o2);
 }
 
-
 // test 4
 // Deallocating nullptr is safe (defensive)
-TEST(PoolTest, DeallocateNullptrThrowsLogicError) {
+TEST(PoolTest, DeallocateNullptrThrowsLogicError)
+{
     OrderBook *book = new OrderBook();
     EXPECT_THROW(
         book->requestDeAllocationOfOrder(nullptr),
-        std::logic_error
-    );
+        std::logic_error);
 }
-
 
 // test 5
 // Insert + Find
-TEST(ARTTest, InsertAndFind) {
+TEST(ARTTest, InsertAndFind)
+{
     AdaptiveRadixTree tree;
     PriceLevel level_mem{};
     PriceLevel *level = &level_mem;
@@ -81,19 +77,19 @@ TEST(ARTTest, InsertAndFind) {
     EXPECT_EQ(val, level);
 }
 
-
 // test 6
 // Find non-existent key
-TEST(ARTTest, FindMissingKeyReturnsNull) {
+TEST(ARTTest, FindMissingKeyReturnsNull)
+{
     AdaptiveRadixTree tree;
 
     EXPECT_EQ(tree.find(999), nullptr);
 }
 
-
 // test 7
 // Erase removes key
-TEST(ARTTest, EraseRemovesKey) {
+TEST(ARTTest, EraseRemovesKey)
+{
     AdaptiveRadixTree tree;
     PriceLevel level_mem{};
     PriceLevel *level = &level_mem;
@@ -103,10 +99,10 @@ TEST(ARTTest, EraseRemovesKey) {
     EXPECT_EQ(tree.find(5), nullptr);
 }
 
-
 // test 8
 // Multiple inserts preserve correctness
-TEST(ARTTest, MultipleKeysWork) {
+TEST(ARTTest, MultipleKeysWork)
+{
     AdaptiveRadixTree tree;
     PriceLevel m1{}, m2{}, m3{};
     PriceLevel *level1 = &m1;
@@ -121,54 +117,54 @@ TEST(ARTTest, MultipleKeysWork) {
     EXPECT_EQ(tree.find(3), level3);
 }
 
-
 // test 9
 // findOrder
-TEST(OrderBookTest, FindOrderById) {
+TEST(OrderBookTest, FindOrderById)
+{
     OrderBook *book = new OrderBook();
 
-    Order* o = book->requestAllocationOfOrder();
-    *o = {1,1,Side::BUY,OrderType::LIMIT,10,100,100,0,OrderState::NEW,nullptr,nullptr};
+    Order *o = book->requestAllocationOfOrder();
+    *o = {1, 1, Side::BUY, OrderType::LIMIT, 10, 100, 100, 0, OrderState::NEW, nullptr, nullptr};
 
     book->insertOrder(o);
 
-    Order* found = book->findOrder(1);
+    Order *found = book->findOrder(1);
     EXPECT_EQ(found, o);
 }
 
-
 // test 10
 // getOrCreatePriceLevel
-TEST(OrderBookTest, GetOrCreatePriceLevel) {
+TEST(OrderBookTest, GetOrCreatePriceLevel)
+{
     OrderBook *book = new OrderBook();
 
-    PriceLevel* level = vse::test::OrderBookPeer::getOrCreate(*book, Side::BUY, 10);
+    PriceLevel *level = vse::test::OrderBookPeer::getOrCreate(*book, Side::BUY, 10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(*book).size() == 1);
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(*book).find(10) == level);
 }
 
-
 // test 11
 // getPriceLevel
-TEST(OrderBookTest, GetPriceLevel) {
+TEST(OrderBookTest, GetPriceLevel)
+{
     OrderBook *book = new OrderBook();
 
     vse::test::OrderBookPeer::getOrCreate(*book, Side::SELL, 20);
-    PriceLevel* level = vse::test::OrderBookPeer::getLevel(*book, Side::SELL, 20);
+    PriceLevel *level = vse::test::OrderBookPeer::getLevel(*book, Side::SELL, 20);
 
     ASSERT_NE(level, nullptr);
     EXPECT_EQ(level->price, 20);
 }
 
-
 // test 12
 // removePriceLevelIfEmpty
-TEST(OrderBookTest, RemovePriceLevelIfEmpty) {
+TEST(OrderBookTest, RemovePriceLevelIfEmpty)
+{
     OrderBook *book = new OrderBook();
 
-    PriceLevel* level = vse::test::OrderBookPeer::getOrCreate(*book, Side::BUY, 30);
+    PriceLevel *level = vse::test::OrderBookPeer::getOrCreate(*book, Side::BUY, 30);
     ASSERT_NE(level, nullptr);
 
     vse::test::OrderBookPeer::removeIfEmpty(*book, Side::BUY, 30);
@@ -176,10 +172,10 @@ TEST(OrderBookTest, RemovePriceLevelIfEmpty) {
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(*book).empty());
 }
 
-
 // test 13
 // updateOrderState() (MatchingEngine)
-TEST(OrderStateTest, UpdateOrderState) {
+TEST(OrderStateTest, UpdateOrderState)
+{
     MatchingEngine *engine = new MatchingEngine(7);
 
     Order o{};
@@ -198,10 +194,10 @@ TEST(OrderStateTest, UpdateOrderState) {
     EXPECT_EQ(o.state, OrderState::FILLED);
 }
 
-
 // test 14
 // Test FIFO push order
-TEST(PriceLevelTest, FIFOPushOrder) {
+TEST(PriceLevelTest, FIFOPushOrder)
+{
     PriceLevel level{};
 
     Order a{}, b{}, c{};
@@ -216,10 +212,10 @@ TEST(PriceLevelTest, FIFOPushOrder) {
     EXPECT_EQ(level.tail, &c);
 }
 
-
 // test 15
 // Test FIFO remove order
-TEST(PriceLevelTest, FIFORemoveMiddle) {
+TEST(PriceLevelTest, FIFORemoveMiddle)
+{
     PriceLevel level{};
     Order a{}, b{}, c{};
 
@@ -235,19 +231,19 @@ TEST(PriceLevelTest, FIFORemoveMiddle) {
     EXPECT_EQ(level.tail, &c);
 }
 
-
 // test 16
 // consumeOrder() (OrderBook)
-TEST(OrderBookTest, ConsumeOrder) {
+TEST(OrderBookTest, ConsumeOrder)
+{
     OrderBook *book = new OrderBook();
 
     Order o{};
-    o.side = Side::BUY;        // or SELL
+    o.side = Side::BUY; // or SELL
     o.price = 100;
     o.remaining = 100;
 
     // Create price level first
-    PriceLevel* level = vse::test::OrderBookPeer::getOrCreate(*book, o.side, o.price);
+    PriceLevel *level = vse::test::OrderBookPeer::getOrCreate(*book, o.side, o.price);
     level->aggregated_qty = 100;
 
     book->consumeOrder(&o, 40);
@@ -256,20 +252,17 @@ TEST(OrderBookTest, ConsumeOrder) {
     EXPECT_EQ(level->aggregated_qty, 60);
 }
 
-
-
 ///////////////////////////////////////////////////////////////////////////////////
 // -----------------functions that call independent functions test-----------------
 ///////////////////////////////////////////////////////////////////////////////////
 
-
-
 // test 1
 // insertOrder()
-TEST(OrderBookTest, InsertOrderCreatesPriceLevel) {
+TEST(OrderBookTest, InsertOrderCreatesPriceLevel)
+{
     OrderBook *book = new OrderBook();
 
-    Order* o = book->requestAllocationOfOrder();
+    Order *o = book->requestAllocationOfOrder();
     *o = {1, 1, Side::BUY, OrderType::LIMIT, 10, 100, 100, 0, OrderState::NEW, nullptr, nullptr};
 
     book->insertOrder(o);
@@ -278,13 +271,13 @@ TEST(OrderBookTest, InsertOrderCreatesPriceLevel) {
     EXPECT_EQ(vse::test::OrderBookPeer::buyBook(*book).find(10)->aggregated_qty, 100);
 }
 
-
 // test 2
 // removeOrder()
-TEST(OrderBookTest, RemoveOrderDeletesPriceLevel) {
+TEST(OrderBookTest, RemoveOrderDeletesPriceLevel)
+{
     OrderBook *book = new OrderBook();
 
-    Order* o = book->requestAllocationOfOrder();
+    Order *o = book->requestAllocationOfOrder();
     *o = {1, 1, Side::SELL, OrderType::LIMIT, 20, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
 
     book->insertOrder(o);
@@ -293,42 +286,42 @@ TEST(OrderBookTest, RemoveOrderDeletesPriceLevel) {
     EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(*book).empty());
 }
 
-
 // test 3
 // getOrderAtBestPrice()
-TEST(OrderBookTest, GetOrderAtBestPrice) {
+TEST(OrderBookTest, GetOrderAtBestPrice)
+{
     OrderBook *book = new OrderBook();
 
-    Order* o1 = book->requestAllocationOfOrder();
-    *o1 = {1,1,Side::SELL,OrderType::LIMIT,20,50,50,0,OrderState::NEW,nullptr,nullptr};
+    Order *o1 = book->requestAllocationOfOrder();
+    *o1 = {1, 1, Side::SELL, OrderType::LIMIT, 20, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
 
-    Order* o2 = book->requestAllocationOfOrder();
-    *o2 = {2,1,Side::SELL,OrderType::LIMIT,10,50,50,0,OrderState::NEW,nullptr,nullptr};
+    Order *o2 = book->requestAllocationOfOrder();
+    *o2 = {2, 1, Side::SELL, OrderType::LIMIT, 10, 50, 50, 0, OrderState::NEW, nullptr, nullptr};
 
     book->insertOrder(o1);
     book->insertOrder(o2);
 
-    Order* best = book->getOrderAtBestPrice(Side::SELL);
+    Order *best = book->getOrderAtBestPrice(Side::SELL);
     EXPECT_EQ(best->price, 10);
 }
 
-
 // test 4
 // match() (without crossing)
-TEST(MatchingEngineUnitTest, MatchStopsOnNoCross) {
+TEST(MatchingEngineUnitTest, MatchStopsOnNoCross)
+{
     MatchingEngine *engine = new MatchingEngine(8);
 
-    engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
+    engine->onNewOrder(1, 1, Side::BUY, OrderType::LIMIT, 10, 100, 0);
 
-    Order* buy = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
+    Order *buy = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(buy, nullptr);
     EXPECT_EQ(buy->remaining, 100);
 }
 
-
 // test 5
 // executeTrade() (WAL side-effect only)
-TEST(MatchingEngineUnitTest, ExecuteTradeDoesNotMutateOrders) {
+TEST(MatchingEngineUnitTest, ExecuteTradeDoesNotMutateOrders)
+{
     MatchingEngine *engine = new MatchingEngine(9);
 
     Order a{}, b{};
@@ -341,76 +334,76 @@ TEST(MatchingEngineUnitTest, ExecuteTradeDoesNotMutateOrders) {
     EXPECT_EQ(b.remaining, 50);
 }
 
-
 // test 6
 // onNewOrder()
-TEST(MatchingEngineUnitTest, OnNewOrderRestingLimit) {
+TEST(MatchingEngineUnitTest, OnNewOrderRestingLimit)
+{
     MatchingEngine *engine = new MatchingEngine(10);
 
-    bool ok = engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
+    bool ok = engine->onNewOrder(1, 1, Side::BUY, OrderType::LIMIT, 10, 100, 0);
 
     EXPECT_TRUE(ok);
     EXPECT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 }
 
-
 // test 7
 // Cancel filled order
-TEST(MatchingEngineUnitTest, CancelFilledOrderFails) {
+TEST(MatchingEngineUnitTest, CancelFilledOrderFails)
+{
     MatchingEngine *engine = new MatchingEngine(11);
 
-    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).requestAllocationOfOrder();
-    *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
+    Order *o = vse::test::MatchingEnginePeer::orderBook(*engine).requestAllocationOfOrder();
+    *o = {1, 1, Side::BUY, OrderType::LIMIT, 10, 0, 0, 0, OrderState::FILLED, nullptr, nullptr};
 
     bool ok = engine->onCancelOrder(1);
     EXPECT_FALSE(ok);
 }
 
-
 // test 8
 // Modify non-existent order
-TEST(MatchingEngineUnitTest, ModifyNonExistentOrder) {
+TEST(MatchingEngineUnitTest, ModifyNonExistentOrder)
+{
     MatchingEngine *engine = new MatchingEngine(12);
     EXPECT_FALSE(engine->onModifyOrder(999, 10, 100));
 }
 
-
 // test 9
 // Modify filled order fails safely
-TEST(MatchingEngineTest, ModifyFilledOrderFails) {
+TEST(MatchingEngineTest, ModifyFilledOrderFails)
+{
     MatchingEngine *engine = new MatchingEngine(13);
 
-    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).requestAllocationOfOrder();
-    *o = {1,1,Side::BUY,OrderType::LIMIT,10,0,0,0,OrderState::FILLED,nullptr,nullptr};
+    Order *o = vse::test::MatchingEnginePeer::orderBook(*engine).requestAllocationOfOrder();
+    *o = {1, 1, Side::BUY, OrderType::LIMIT, 10, 0, 0, 0, OrderState::FILLED, nullptr, nullptr};
 
     EXPECT_FALSE(engine->onModifyOrder(1, 20, 100));
 }
 
-
 // test 10
 // Reduce quantity only (same price)
 
-TEST(MatchingEngineTest, ModifyReduceQuantitySamePrice) {
+TEST(MatchingEngineTest, ModifyReduceQuantitySamePrice)
+{
     MatchingEngine *engine = new MatchingEngine(14);
 
-    engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
+    engine->onNewOrder(1, 1, Side::BUY, OrderType::LIMIT, 10, 100, 0);
 
     bool ok = engine->onModifyOrder(1, 10, 60);
     EXPECT_TRUE(ok);
 
-    Order* updated = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
+    Order *updated = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(updated, nullptr);
     EXPECT_EQ(updated->quantity, 60);
     EXPECT_EQ(updated->remaining, 60);
 }
 
-
 // test 11
 // Modify causes cancel + reinsert
-TEST(MatchingEngineTest, ModifyPriceCausesReinsert) {
+TEST(MatchingEngineTest, ModifyPriceCausesReinsert)
+{
     MatchingEngine *engine = new MatchingEngine(15);
 
-    engine->onNewOrder(1,1,Side::BUY,OrderType::LIMIT,10,100,0);
+    engine->onNewOrder(1, 1, Side::BUY, OrderType::LIMIT, 10, 100, 0);
 
     bool ok = engine->onModifyOrder(1, 20, 200);
     EXPECT_TRUE(ok);
@@ -419,23 +412,20 @@ TEST(MatchingEngineTest, ModifyPriceCausesReinsert) {
     EXPECT_NE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(20), nullptr);
 }
 
-
-
 // ///////////////////////////////////////////////////////////////////////////
 // -------------------------------logical tests-------------------------------
 // ///////////////////////////////////////////////////////////////////////////
 
-
-
 // test 1
 /*
 What this test guarantees
-	•	Deterministic clean startup
-	•	No garbage price levels
-	•	No accidental pre-allocation
-	•	Pool is untouched
+    •	Deterministic clean startup
+    •	No garbage price levels
+    •	No accidental pre-allocation
+    •	Pool is untouched
 */
-TEST(MatchingEngineTest, EmptyBookOnStartup) {
+TEST(MatchingEngineTest, EmptyBookOnStartup)
+{
     MatchingEngine *engine = new MatchingEngine(16);
     // Buy & sell ladders must be empty
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
@@ -446,28 +436,28 @@ TEST(MatchingEngineTest, EmptyBookOnStartup) {
     EXPECT_TRUE(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)) == nullptr);
 }
 
-
 // test 2
 /*
 What this test validates
-	•	Pool allocation works
-	•	Order insertion path is correct
-	•	Buy ladder populated
-	•	Aggregated quantity correct
-	•	FIFO pointers correct
-	•	No accidental matching
+    •	Pool allocation works
+    •	Order insertion path is correct
+    •	Buy ladder populated
+    •	Aggregated quantity correct
+    •	FIFO pointers correct
+    •	No accidental matching
 */
-TEST(MatchingEngineTest, InsertBuyLimitNoMatch) {
+TEST(MatchingEngineTest, InsertBuyLimitNoMatch)
+{
     MatchingEngine *engine = new MatchingEngine(17);
 
-    engine->onNewOrder(1,42,Side::BUY,OrderType::LIMIT,10,100,1);
+    engine->onNewOrder(1, 42, Side::BUY, OrderType::LIMIT, 10, 100, 1);
 
     ASSERT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
-    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
+    Order *o = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(o, nullptr);
 
-    PriceLevel* level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
+    PriceLevel *level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 100);
@@ -476,26 +466,26 @@ TEST(MatchingEngineTest, InsertBuyLimitNoMatch) {
     EXPECT_EQ(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
-
 // test 3
 /*
 This test mirrors Test 2 but on the sell side, and it validates:
-	•	Sell ladder insertion
-	•	Best ask update
-	•	No accidental matching
-	•	FIFO correctness on sell side
+    •	Sell ladder insertion
+    •	Best ask update
+    •	No accidental matching
+    •	FIFO correctness on sell side
 */
-TEST(MatchingEngineTest, InsertSellLimitNoMatch) {
+TEST(MatchingEngineTest, InsertSellLimitNoMatch)
+{
     MatchingEngine *engine = new MatchingEngine(18);
 
-    engine->onNewOrder(2,99,Side::SELL,OrderType::LIMIT,20,150,1);
+    engine->onNewOrder(2, 99, Side::SELL, OrderType::LIMIT, 20, 150, 1);
 
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
-    Order* o = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
+    Order *o = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
     ASSERT_NE(o, nullptr);
 
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(20);
+    PriceLevel *level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(20);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 150);
@@ -504,22 +494,22 @@ TEST(MatchingEngineTest, InsertSellLimitNoMatch) {
     EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
-
 // test 4
 /*
 What this test validates
-	•	Crossing logic (>= / <=)
-	•	Matching loop
-	•	Quantity decrement
-	•	Order state transition
-	•	Price level cleanup
-	•	Pool deallocation safety
+    •	Crossing logic (>= / <=)
+    •	Matching loop
+    •	Quantity decrement
+    •	Order state transition
+    •	Price level cleanup
+    •	Pool deallocation safety
 */
-TEST(MatchingEngineTest, ExactPriceCrossFullFill) {
+TEST(MatchingEngineTest, ExactPriceCrossFullFill)
+{
     MatchingEngine *engine = new MatchingEngine(19);
 
-    engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
-    engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,100,2);
+    engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
+    engine->onNewOrder(2, 20, Side::BUY, OrderType::LIMIT, 10, 100, 2);
 
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
     EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
@@ -531,16 +521,16 @@ TEST(MatchingEngineTest, ExactPriceCrossFullFill) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 }
 
-
 // test 5
 /*
 This test validates that:
-	•	Only part of a resting order is consumed
-	•	Remaining quantity stays on the book
-	•	FIFO pointers remain correct
-	•	Best bid / ask is preserved
+    •	Only part of a resting order is consumed
+    •	Remaining quantity stays on the book
+    •	FIFO pointers remain correct
+    •	Best bid / ask is preserved
 */
-TEST(MatchingEngineTest, PartialFillSingleLevel) {
+TEST(MatchingEngineTest, PartialFillSingleLevel)
+{
     MatchingEngine *engine = new MatchingEngine(20);
 
     // Insert SELL
@@ -553,12 +543,12 @@ TEST(MatchingEngineTest, PartialFillSingleLevel) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 
     // SELL must still exist
-    Order* sell = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
+    Order *sell = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(sell, nullptr);
     EXPECT_EQ(sell->remaining, 100);
 
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
+    PriceLevel *level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 100);
@@ -568,22 +558,22 @@ TEST(MatchingEngineTest, PartialFillSingleLevel) {
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
 }
 
-
 // test 6
 /*
 What this test validates
-	•	Intrusive FIFO list correctness
-	•	fifoPush order
-	•	fifo_remove correctness
-	•	Matching loop respects FIFO
-	•	No pointer corruption
+    •	Intrusive FIFO list correctness
+    •	fifoPush order
+    •	fifo_remove correctness
+    •	Matching loop respects FIFO
+    •	No pointer corruption
 */
-TEST(MatchingEngineTest, FIFOAtSamePriceLevel) {
+TEST(MatchingEngineTest, FIFOAtSamePriceLevel)
+{
     MatchingEngine *engine = new MatchingEngine(21);
 
     engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 20, Side::SELL, OrderType::LIMIT, 10, 100, 2);
-    engine->onNewOrder(3, 30, Side::BUY,  OrderType::LIMIT, 10, 150, 3);
+    engine->onNewOrder(3, 30, Side::BUY, OrderType::LIMIT, 10, 150, 3);
 
     // First SELL must be gone
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
@@ -592,12 +582,12 @@ TEST(MatchingEngineTest, FIFOAtSamePriceLevel) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(3) == nullptr);
 
     // Second SELL must remain
-    Order* sell2 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
+    Order *sell2 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
     ASSERT_NE(sell2, nullptr);
     EXPECT_EQ(sell2->remaining, 50);
 
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
+    PriceLevel *level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 50);
@@ -605,21 +595,21 @@ TEST(MatchingEngineTest, FIFOAtSamePriceLevel) {
     EXPECT_EQ(level->tail, sell2);
 }
 
-
 // test 7
 /*
 What this test validates
-	•	Correct best-price selection
-	•	Ladder traversal logic
-	•	best_ask updates
-	•	No FIFO leakage across price levels
+    •	Correct best-price selection
+    •	Ladder traversal logic
+    •	best_ask updates
+    •	No FIFO leakage across price levels
 */
-TEST(MatchingEngineTest, PricePriorityAcrossLevels) {
+TEST(MatchingEngineTest, PricePriorityAcrossLevels)
+{
     MatchingEngine *engine = new MatchingEngine(22);
 
     engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 20, Side::SELL, OrderType::LIMIT, 9, 100, 2);
-    engine->onNewOrder(3, 30, Side::BUY,  OrderType::LIMIT, 10, 150, 3);
+    engine->onNewOrder(3, 30, Side::BUY, OrderType::LIMIT, 10, 150, 3);
 
     // SELL @ 9 must be gone
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
@@ -628,29 +618,29 @@ TEST(MatchingEngineTest, PricePriorityAcrossLevels) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(3) == nullptr);
 
     // SELL @ 10 must remain
-    Order* sell10 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
+    Order *sell10 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1);
     ASSERT_NE(sell10, nullptr);
     EXPECT_EQ(sell10->remaining, 50);
 
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
+    PriceLevel *level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 50);
     EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
-
 // test 8
 /*
 What this test validates
-	•	Market order path
-	•	No insertion into price ladder
-	•	Correct best-price traversal
-	•	Correct partial fill at second level
-	•	Book integrity after sweep
+    •	Market order path
+    •	No insertion into price ladder
+    •	Correct best-price traversal
+    •	Correct partial fill at second level
+    •	Book integrity after sweep
 */
-TEST(MatchingEngineTest, MarketOrderSweep) {
+TEST(MatchingEngineTest, MarketOrderSweep)
+{
     MatchingEngine *engine = new MatchingEngine(23);
 
     engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
@@ -665,36 +655,36 @@ TEST(MatchingEngineTest, MarketOrderSweep) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 
     // SELL @11 must remain partially filled
-    Order* sell11 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
+    Order *sell11 = vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2);
     ASSERT_NE(sell11, nullptr);
     EXPECT_EQ(sell11->remaining, 50);
 
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(11);
+    PriceLevel *level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(11);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 50);
     EXPECT_EQ(vse::test::OrderBookPeer::bestAsk(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
-
 // test 9
 /*
 it must:
-	•	Remove the order from FIFO correctly
-	•	Update aggregated quantity
-	•	Delete price level if empty
-	•	Update best bid / ask
-	•	Not corrupt the pool
+    •	Remove the order from FIFO correctly
+    •	Update aggregated quantity
+    •	Delete price level if empty
+    •	Update best bid / ask
+    •	Not corrupt the pool
 
 Expected behavior
-	•	Order removed from book
-	•	Buy ladder becomes empty
-	•	best_bid reset
-	•	Order remaining unchanged (or zero, depending on design)
-	•	No crash, no dangling pointers
+    •	Order removed from book
+    •	Buy ladder becomes empty
+    •	best_bid reset
+    •	Order remaining unchanged (or zero, depending on design)
+    •	No crash, no dangling pointers
 */
-TEST(MatchingEngineTest, CancelRestingOrder) {
+TEST(MatchingEngineTest, CancelRestingOrder)
+{
     MatchingEngine *engine = new MatchingEngine(24);
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::LIMIT, 10, 100, 1);
@@ -711,16 +701,16 @@ TEST(MatchingEngineTest, CancelRestingOrder) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 }
 
-
 // test 10
 /*
 This test ensures:
-	•	Old order is fully removed
-	•	New order is inserted correctly
-	•	FIFO priority is reset
-	•	New price level is respected
+    •	Old order is fully removed
+    •	New order is inserted correctly
+    •	FIFO priority is reset
+    •	New price level is respected
 */
-TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
+TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert)
+{
     MatchingEngine *engine = new MatchingEngine(25);
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::LIMIT, 10, 100, 1);
@@ -733,12 +723,12 @@ TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
 
     ASSERT_EQ(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).size(), 1);
 
-    PriceLevel* level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(11);
+    PriceLevel *level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(11);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 200);
 
-    Order* modified = level->head;
+    Order *modified = level->head;
     ASSERT_NE(modified, nullptr);
 
     EXPECT_EQ(modified->order_id, 1);
@@ -746,20 +736,20 @@ TEST(MatchingEngineTest, ModifyOrderCancelAndReinsert) {
     EXPECT_EQ(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*engine)), level);
 }
 
-
 // test 11
 // test to cancel non-existing orders
-TEST(MatchingEngineTest, CancelNonExistentOrder) {
+TEST(MatchingEngineTest, CancelNonExistentOrder)
+{
     MatchingEngine *engine = new MatchingEngine(26);
-    engine->onCancelOrder(999);  // should not crash
+    engine->onCancelOrder(999); // should not crash
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
     EXPECT_TRUE(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
 }
 
-
 // test 12
 // test to place market order on empty order book
-TEST(MatchingEngineTest, MarketOrderOnEmptyBook) {
+TEST(MatchingEngineTest, MarketOrderOnEmptyBook)
+{
     MatchingEngine *engine = new MatchingEngine(27);
 
     engine->onNewOrder(1, 10, Side::BUY, OrderType::MARKET, 0, 100, 1);
@@ -771,17 +761,14 @@ TEST(MatchingEngineTest, MarketOrderOnEmptyBook) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 }
 
-
-
 //////////////////////////////////////////////////////////////////////////////
 // ---------------------------------wal tests---------------------------------
 //////////////////////////////////////////////////////////////////////////////
 
-
-
 // test 1
 // logInput() — ADD correctness
-TEST(WALTest, LogInputWritesAddEntry) {
+TEST(WALTest, LogInputWritesAddEntry)
+{
     WALSystem *wal = new WALSystem(walPath(1));
 
     Order o{};
@@ -798,9 +785,8 @@ TEST(WALTest, LogInputWritesAddEntry) {
     wal->logInput(WalAction::ADD, &o);
 
     std::vector<LogEntry> entries;
-    wal->recover([&](const LogEntry& e) {
-        entries.push_back(e);
-    });
+    wal->recover([&](const LogEntry &e)
+                 { entries.push_back(e); });
 
     ASSERT_EQ(entries.size(), 1);
     EXPECT_EQ(entries[0].action, WalAction::ADD);
@@ -809,18 +795,17 @@ TEST(WALTest, LogInputWritesAddEntry) {
     EXPECT_EQ(entries[0].data.quantity, 100);
 }
 
-
 // test 2
 // logModify() — MODIFY correctness
-TEST(WALTest, LogModifyWritesModifyEntry) {
+TEST(WALTest, LogModifyWritesModifyEntry)
+{
     WALSystem *wal = new WALSystem(walPath(2));
 
     wal->logModify(7, 25, 300);
 
     std::vector<LogEntry> entries;
-    wal->recover([&](const LogEntry& e) {
-        entries.push_back(e);
-    });
+    wal->recover([&](const LogEntry &e)
+                 { entries.push_back(e); });
 
     ASSERT_EQ(entries.size(), 1);
     EXPECT_EQ(entries[0].action, WalAction::MODIFY);
@@ -829,28 +814,27 @@ TEST(WALTest, LogModifyWritesModifyEntry) {
     EXPECT_EQ(entries[0].data.quantity, 300);
 }
 
-
 // test 3
 // logCancel() — CANCEL correctness
-TEST(WALTest, LogCancelWritesCancelEntry) {
+TEST(WALTest, LogCancelWritesCancelEntry)
+{
     WALSystem *wal = new WALSystem(walPath(3));
 
     wal->logCancel(99);
 
     std::vector<LogEntry> entries;
-    wal->recover([&](const LogEntry& e) {
-        entries.push_back(e);
-    });
+    wal->recover([&](const LogEntry &e)
+                 { entries.push_back(e); });
 
     ASSERT_EQ(entries.size(), 1);
     EXPECT_EQ(entries[0].action, WalAction::CANCEL);
     EXPECT_EQ(entries[0].data.order_id, 99);
 }
 
-
 // test 4
 // WAL append behavior (multiple calls)
-TEST(WALTest, MultipleEntriesAppendInOrder) {
+TEST(WALTest, MultipleEntriesAppendInOrder)
+{
     WALSystem *wal = new WALSystem(walPath(4));
 
     wal->logCancel(1);
@@ -858,9 +842,8 @@ TEST(WALTest, MultipleEntriesAppendInOrder) {
     wal->logCancel(3);
 
     std::vector<LogEntry> entries;
-    wal->recover([&](const LogEntry& e) {
-        entries.push_back(e);
-    });
+    wal->recover([&](const LogEntry &e)
+                 { entries.push_back(e); });
 
     ASSERT_EQ(entries.size(), 3);
     EXPECT_EQ(entries[0].data.order_id, 1);
@@ -868,10 +851,10 @@ TEST(WALTest, MultipleEntriesAppendInOrder) {
     EXPECT_EQ(entries[2].data.order_id, 3);
 }
 
-
 // test 5
 // recover() — sequential replay correctness
-TEST(WALTest, RecoverReplaysSequentially) {
+TEST(WALTest, RecoverReplaysSequentially)
+{
     WALSystem *wal = new WALSystem(walPath(5));
 
     wal->logCancel(10);
@@ -879,9 +862,8 @@ TEST(WALTest, RecoverReplaysSequentially) {
     wal->logCancel(30);
 
     std::vector<OrderId> ids;
-    wal->recover([&](const LogEntry& e) {
-        ids.push_back(e.data.order_id);
-    });
+    wal->recover([&](const LogEntry &e)
+                 { ids.push_back(e.data.order_id); });
 
     ASSERT_EQ(ids.size(), 3);
     EXPECT_EQ(ids[0], 10);
@@ -889,24 +871,23 @@ TEST(WALTest, RecoverReplaysSequentially) {
     EXPECT_EQ(ids[2], 30);
 }
 
-
 // test 6
 // recover() on missing WAL file
-TEST(WALTest, RecoverOnMissingFileDoesNothing) {
+TEST(WALTest, RecoverOnMissingFileDoesNothing)
+{
     WALSystem *wal = new WALSystem("non_existent_wal_file");
 
     int count = 0;
-    wal->recover([&](const LogEntry&) {
-        count++;
-    });
+    wal->recover([&](const LogEntry &)
+                 { count++; });
 
     EXPECT_EQ(count, 0);
 }
 
-
 // test 7
 // ogTrade() — trade file correctness
-TEST(WALTest, LogTradeWritesTradeFile) {
+TEST(WALTest, LogTradeWritesTradeFile)
+{
     std::string base = walPath(6);
     WALSystem *wal = new WALSystem(base);
 
@@ -921,24 +902,22 @@ TEST(WALTest, LogTradeWritesTradeFile) {
     EXPECT_EQ(line, "1,2,100,50");
 }
 
-
 // test 8
 // WAL + Trade independence
-TEST(WALTest, TradeLoggingDoesNotAffectWAL) {
+TEST(WALTest, TradeLoggingDoesNotAffectWAL)
+{
     WALSystem *wal = new WALSystem(walPath(7));
 
     wal->logTrade(1, 2, 10, 5);
     wal->logCancel(42);
 
     std::vector<LogEntry> entries;
-    wal->recover([&](const LogEntry& e) {
-        entries.push_back(e);
-    });
+    wal->recover([&](const LogEntry &e)
+                 { entries.push_back(e); });
 
     ASSERT_EQ(entries.size(), 1);
     EXPECT_EQ(entries[0].action, WalAction::CANCEL);
 }
-
 
 // test 9
 /*
@@ -950,7 +929,8 @@ What this test PROVES
 ✔ WAL order == input order
 ✔ WAL replay is deterministic
 */
-TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
+TEST(MatchingEngineTest, WALInputOrderingAndCompleteness)
+{
     {
         MatchingEngine *engine = new MatchingEngine(28);
 
@@ -971,9 +951,8 @@ TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
     std::vector<LogEntry> entries;
     WALSystem wal("engine_" + std::to_string(28));
 
-    wal.recover([&](const LogEntry& entry) {
-        entries.push_back(entry);
-    });
+    wal.recover([&](const LogEntry &entry)
+                { entries.push_back(entry); });
 
     ASSERT_EQ(entries.size(), 5);
 
@@ -988,17 +967,17 @@ TEST(MatchingEngineTest, WALInputOrderingAndCompleteness) {
     EXPECT_EQ(entries[3].data.quantity, 150);
 }
 
-
 // test 10
 /*
 This validates:
-	•	Determinism
-	•	Correct WAL ordering
-	•	Correct recovery logic
-	•	No hidden state / randomness
-	•	Replay safety
+    •	Determinism
+    •	Correct WAL ordering
+    •	Correct recovery logic
+    •	No hidden state / randomness
+    •	Replay safety
 */
-TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
+TEST(MatchingEngineTest, DeterministicReplayFromWAL)
+{
     // -------- First run (generate WAL) --------
     {
         MatchingEngine *engine = new MatchingEngine(29);
@@ -1025,13 +1004,13 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     // SELL side must have exactly one level (@10)
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).size(), 1);
 
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
+    PriceLevel *level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
     ASSERT_NE(level, nullptr);
 
     // Remaining qty must be 30
     EXPECT_EQ(level->aggregated_qty, 30);
 
-    Order* order = level->head;
+    Order *order = level->head;
     ASSERT_NE(order, nullptr);
 
     EXPECT_EQ(order->order_id, 1);
@@ -1041,20 +1020,21 @@ TEST(MatchingEngineTest, DeterministicReplayFromWAL) {
     EXPECT_TRUE(vse::test::OrderBookPeer::bestBid(vse::test::MatchingEnginePeer::orderBook(*recovered)) == nullptr);
 
     // FIX: Cleanup
-    delete recovered; 
+    delete recovered;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
 // ------------------------------ NEW TESTS ---------------------------------------
 ///////////////////////////////////////////////////////////////////////////////////
 
-TEST(MatchingEngineNewTest, SelfTradePreventionCancelsIncoming) {
+TEST(MatchingEngineNewTest, SelfTradePreventionCancelsIncoming)
+{
     MatchingEngine *engine = new MatchingEngine(100);
 
     engine->onNewOrder(1, 42, Side::SELL, OrderType::LIMIT, 10, 100, 1);
     engine->onNewOrder(2, 42, Side::BUY, OrderType::LIMIT, 10, 100, 2);
 
-    PriceLevel* level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
+    PriceLevel *level = vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).find(10);
     ASSERT_NE(level, nullptr);
     EXPECT_EQ(level->aggregated_qty, 100);
 
@@ -1062,45 +1042,47 @@ TEST(MatchingEngineNewTest, SelfTradePreventionCancelsIncoming) {
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) != nullptr);
 }
 
-TEST(MatchingEngineNewTest, FilledOrderImmediateDeallocation) {
+TEST(MatchingEngineNewTest, FilledOrderImmediateDeallocation)
+{
     MatchingEngine *engine = new MatchingEngine(101);
 
-    engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
-    engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,100,2);
+    engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
+    engine->onNewOrder(2, 20, Side::BUY, OrderType::LIMIT, 10, 100, 2);
 
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(2) == nullptr);
 }
 
-TEST(MatchingEngineNewTest, MarketOrderImmediateDeallocation) {
+TEST(MatchingEngineNewTest, MarketOrderImmediateDeallocation)
+{
     MatchingEngine *engine = new MatchingEngine(102);
 
-    engine->onNewOrder(1,10,Side::BUY,OrderType::MARKET,0,100,1);
+    engine->onNewOrder(1, 10, Side::BUY, OrderType::MARKET, 0, 100, 1);
 
     EXPECT_TRUE(vse::test::OrderBookPeer::buyBook(vse::test::MatchingEnginePeer::orderBook(*engine)).empty());
     EXPECT_TRUE(vse::test::MatchingEnginePeer::orderBook(*engine).findOrder(1) == nullptr);
 }
 
-TEST(MatchingEngineNewTest, WALRecoveryInternalOnNewOrderPath) {
+TEST(MatchingEngineNewTest, WALRecoveryInternalOnNewOrderPath)
+{
     {
         MatchingEngine *engine = new MatchingEngine(103);
-        engine->onNewOrder(1,10,Side::SELL,OrderType::LIMIT,10,100,1);
-        engine->onNewOrder(2,20,Side::BUY,OrderType::LIMIT,10,70,2);
+        engine->onNewOrder(1, 10, Side::SELL, OrderType::LIMIT, 10, 100, 1);
+        engine->onNewOrder(2, 20, Side::BUY, OrderType::LIMIT, 10, 70, 2);
     }
 
     MatchingEngine *recovered = new MatchingEngine(103);
 
     ASSERT_EQ(vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).size(), 1);
 
-    PriceLevel* level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
+    PriceLevel *level = vse::test::OrderBookPeer::sellBook(vse::test::MatchingEnginePeer::orderBook(*recovered)).find(10);
     ASSERT_NE(level, nullptr);
 
     EXPECT_EQ(level->aggregated_qty, 30);
 }
 
-
-int main(int argc,char* argv[]){
-    // 1. Force WAL files to drop locally during tests, bypassing the Docker env
+int main(int argc, char *argv[])
+{
 #ifdef __linux__
     unsetenv("VSE_WAL_DIR");
 #else
@@ -1110,6 +1092,6 @@ int main(int argc,char* argv[]){
     int ret = system("rm -f *.wal *.trades test_wal_* engine_*.wal /app/wal/*.wal /app/wal/*.trades 2>/dev/null");
     (void)ret;
 
-    testing::InitGoogleTest(&argc,argv);
+    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

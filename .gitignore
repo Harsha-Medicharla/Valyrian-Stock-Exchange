@@ -6,5 +6,4 @@ build_trade_test/
 *.trades
 matching_engine_test
 repomix-output.xml
-*.py
-VSE
+matching_engine_bench

@@ -40,7 +40,7 @@ public:
 class WALSystem
 {
 private:
-    std::string logFile;   // Path to the log file (unchanged name)
+    std::string logFile;
 
     std::ofstream logStream;
 

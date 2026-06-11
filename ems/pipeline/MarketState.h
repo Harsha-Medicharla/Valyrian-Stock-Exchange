@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <vector>
 
-// Per-symbol open/close state.
 class MarketState
 {
 private:

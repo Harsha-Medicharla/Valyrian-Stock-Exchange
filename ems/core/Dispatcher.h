@@ -31,14 +31,12 @@ private:
 
         while (running_.load(std::memory_order_relaxed))
         {
-            // 1. Check if the current server sequence was rejected pre-trade
             if (rejectedStates_.tryConsumeRejected(nextServerSequence_))
             {
                 ++nextServerSequence_;
                 continue;
             }
 
-            // 2. Otherwise, it must be waiting for us in the next physical ring slot
             if (ring_.isAvailable(nextRingSequence_))
             {
                 OrderSlot &slot = ring_.get(nextRingSequence_);

@@ -6,217 +6,217 @@
 
 inline TimeStamp getCurrentWallTime()
 {
-  using namespace std::chrono;
-  return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+    using namespace std::chrono;
+    return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 }
 
 namespace vse::test
 {
-struct OrderBookPeer;
+    struct OrderBookPeer;
 }
 
 class OrderBook
 {
-  friend struct vse::test::OrderBookPeer;
+    friend struct vse::test::OrderBookPeer;
 
 private:
-  OrderPool order_pool;
-  PriceLevelPool price_level_pool;
-  absl::flat_hash_map<OrderId, Order *> order_index;
-  AdaptiveRadixTree buy_book;
-  AdaptiveRadixTree sell_book;
-  PriceLevel *best_bid;
-  PriceLevel *best_ask;
+    OrderPool order_pool;
+    PriceLevelPool price_level_pool;
+    absl::flat_hash_map<OrderId, Order *> order_index;
+    AdaptiveRadixTree buy_book;
+    AdaptiveRadixTree sell_book;
+    PriceLevel *best_bid;
+    PriceLevel *best_ask;
 
 public:
-  OrderBook() : best_bid(nullptr), best_ask(nullptr)
-  {
-    order_index.reserve(1 << 20);
-  }
-
-  Order *getOrderAtBestPrice(Side opposite_side) noexcept
-  {
-    PriceLevel *level = (opposite_side == Side::BUY) ? best_bid : best_ask;
-    return (level) ? level->head : nullptr;
-  }
-
-  void consumeOrder(Order *order, Qty qty) noexcept
-  {
-    PriceLevel *level = getPriceLevel(order->side, order->price);
-    order->remaining -= qty;
-    level->aggregated_qty -= qty;
-  }
-
-  Order *requestAllocationOfOrder()
-  {
-    return order_pool.allocate();
-  }
-
-  void requestDeAllocationOfOrder(Order *order)
-  {
-    order_pool.deallocate(order);
-  }
-
-  void insertOrder(Order *order)
-  {
-    if (order == nullptr)
+    OrderBook() : best_bid(nullptr), best_ask(nullptr)
     {
-      throw std::logic_error("insertOrder: null order");
+        order_index.reserve(1 << 20);
     }
-    try
+
+    Order *getOrderAtBestPrice(Side opposite_side) noexcept
     {
-      PriceLevel *level = getOrCreatePriceLevel(order->side, order->price);
-
-      level->fifoPush(order);
-
-      order_index.emplace(order->order_id, order);
-
-      if (order->side == Side::BUY)
-      {
-        best_bid = buy_book.find(buy_book.maxPrice());
-      }
-      else
-      {
-        best_ask = sell_book.find(sell_book.minPrice());
-      }
+        PriceLevel *level = (opposite_side == Side::BUY) ? best_bid : best_ask;
+        return (level) ? level->head : nullptr;
     }
-    catch (...)
+
+    void consumeOrder(Order *order, Qty qty) noexcept
     {
-      if (order->prev or order->next)
-      {
         PriceLevel *level = getPriceLevel(order->side, order->price);
-        if (level)
+        order->remaining -= qty;
+        level->aggregated_qty -= qty;
+    }
+
+    Order *requestAllocationOfOrder()
+    {
+        return order_pool.allocate();
+    }
+
+    void requestDeAllocationOfOrder(Order *order)
+    {
+        order_pool.deallocate(order);
+    }
+
+    void insertOrder(Order *order)
+    {
+        if (order == nullptr)
         {
-          level->fifoRemove(order);
+            throw std::logic_error("insertOrder: null order");
         }
-      }
-      throw;
-    }
-  }
+        try
+        {
+            PriceLevel *level = getOrCreatePriceLevel(order->side, order->price);
 
-  void removeOrder(Order *order)
-  {
-    if (order == nullptr)
+            level->fifoPush(order);
+
+            order_index.emplace(order->order_id, order);
+
+            if (order->side == Side::BUY)
+            {
+                best_bid = buy_book.find(buy_book.maxPrice());
+            }
+            else
+            {
+                best_ask = sell_book.find(sell_book.minPrice());
+            }
+        }
+        catch (...)
+        {
+            if (order->prev or order->next)
+            {
+                PriceLevel *level = getPriceLevel(order->side, order->price);
+                if (level)
+                {
+                    level->fifoRemove(order);
+                }
+            }
+            throw;
+        }
+    }
+
+    void removeOrder(Order *order)
     {
-      throw std::logic_error("removeOrder: null order");
+        if (order == nullptr)
+        {
+            throw std::logic_error("removeOrder: null order");
+        }
+
+        PriceLevel *level = getPriceLevel(order->side, order->price);
+        if (!level)
+        {
+            throw std::logic_error("removeOrder: price level missing");
+        }
+
+        level->fifoRemove(order);
+
+        order_index.erase(order->order_id);
+
+        removePriceLevelIfEmpty(order->side, order->price);
+
+        if (order->side == Side::BUY)
+        {
+            if (buy_book.empty())
+            {
+                best_bid = nullptr;
+            }
+            else
+            {
+                best_bid = buy_book.find(buy_book.maxPrice());
+            }
+        }
+        else
+        {
+            if (sell_book.empty())
+            {
+                best_ask = nullptr;
+            }
+            else
+            {
+                best_ask = sell_book.find(sell_book.minPrice());
+            }
+        }
+
+        order_pool.deallocate(order);
     }
 
-    PriceLevel *level = getPriceLevel(order->side, order->price);
-    if (!level)
+    Order *findOrder(OrderId order_id) noexcept
     {
-      throw std::logic_error("removeOrder: price level missing");
+        auto it = order_index.find(order_id);
+        if (it == order_index.end())
+        {
+            return nullptr;
+        }
+        return it->second;
     }
 
-    level->fifoRemove(order);
-
-    order_index.erase(order->order_id);
-
-    removePriceLevelIfEmpty(order->side, order->price);
-
-    if (order->side == Side::BUY)
+    [[nodiscard]] inline Price bestBidPrice() const noexcept
     {
-      if (buy_book.empty())
-      {
-        best_bid = nullptr;
-      }
-      else
-      {
-        best_bid = buy_book.find(buy_book.maxPrice());
-      }
+        return best_bid ? best_bid->price : 0;
     }
-    else
+
+    [[nodiscard]] inline Price bestAskPrice() const noexcept
     {
-      if (sell_book.empty())
-      {
-        best_ask = nullptr;
-      }
-      else
-      {
-        best_ask = sell_book.find(sell_book.minPrice());
-      }
+        return best_ask ? best_ask->price : 0;
     }
-
-    order_pool.deallocate(order);
-  }
-
-  Order *findOrder(OrderId order_id) noexcept
-  {
-    auto it = order_index.find(order_id);
-    if (it == order_index.end())
-    {
-      return nullptr;
-    }
-    return it->second;
-  }
-
-  [[nodiscard]] inline Price bestBidPrice() const noexcept
-  {
-    return best_bid ? best_bid->price : 0;
-  }
-
-  [[nodiscard]] inline Price bestAskPrice() const noexcept
-  {
-    return best_ask ? best_ask->price : 0;
-  }
 
 private:
-  PriceLevel *getOrCreatePriceLevel(Side side, Price price)
-  {
-    auto &book = (side == Side::BUY) ? buy_book : sell_book;
-
-    PriceLevel *level = book.find(price);
-    if (level != nullptr)
+    PriceLevel *getOrCreatePriceLevel(Side side, Price price)
     {
-      return level;
+        auto &book = (side == Side::BUY) ? buy_book : sell_book;
+
+        PriceLevel *level = book.find(price);
+        if (level != nullptr)
+        {
+            return level;
+        }
+
+        level = price_level_pool.allocate();
+
+        try
+        {
+            level->price = price;
+            book.insert(price, level);
+        }
+        catch (...)
+        {
+            price_level_pool.deallocate(level);
+            throw;
+        }
+
+        return level;
     }
 
-    level = price_level_pool.allocate();
-
-    try
+    PriceLevel *getPriceLevel(Side side, Price price) noexcept
     {
-      level->price = price;
-      book.insert(price, level);
-    }
-    catch (...)
-    {
-      price_level_pool.deallocate(level);
-      throw;
-    }
+        auto &book = (side == Side::BUY) ? buy_book : sell_book;
 
-    return level;
-  }
-
-  PriceLevel *getPriceLevel(Side side, Price price) noexcept
-  {
-    auto &book = (side == Side::BUY) ? buy_book : sell_book;
-
-    PriceLevel *level = book.find(price);
-    if (level != nullptr)
-    {
-      return level;
-    }
-    else
-    {
-      return nullptr;
-    }
-  }
-
-  void removePriceLevelIfEmpty(Side side, Price price) noexcept
-  {
-    auto &book = (side == Side::BUY) ? buy_book : sell_book;
-
-    PriceLevel *level = book.find(price);
-    if (level == nullptr)
-    {
-      return;
+        PriceLevel *level = book.find(price);
+        if (level != nullptr)
+        {
+            return level;
+        }
+        else
+        {
+            return nullptr;
+        }
     }
 
-    if (!level->empty())
+    void removePriceLevelIfEmpty(Side side, Price price) noexcept
     {
-      return;
-    }
+        auto &book = (side == Side::BUY) ? buy_book : sell_book;
 
-    book.erase(level->price);
-    price_level_pool.deallocate(level);
-  }
+        PriceLevel *level = book.find(price);
+        if (level == nullptr)
+        {
+            return;
+        }
+
+        if (!level->empty())
+        {
+            return;
+        }
+
+        book.erase(level->price);
+        price_level_pool.deallocate(level);
+    }
 };

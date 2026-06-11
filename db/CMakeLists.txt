@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads REQUIRED)
 if(APPLE)
-    # Hint to CMake where Homebrew hides libpq on Apple Silicon
     list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libpq")
 endif()
 find_package(PostgreSQL REQUIRED)

@@ -8,11 +8,11 @@
 struct Candle
 {
     uint64_t open_ns;
-    Price    open;
-    Price    high;
-    Price    low;
-    Price    close;
-    Qty      volume;
+    Price open;
+    Price high;
+    Price low;
+    Price close;
+    Qty volume;
     uint32_t symbol_id;
     uint32_t window_seconds;
 };

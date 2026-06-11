@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 
-// Ring-buffer slot lifecycle for the dispatcher (see IngressWorker claim-before-validate).
 enum class OrderSlotState : uint8_t
 {
     Pending = 0,

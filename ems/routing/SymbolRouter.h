@@ -11,7 +11,6 @@ public:
     {
         for (size_t i = 0; i < numSymbols; ++i)
         {
-            // Deterministic identity mapping: symbol i routes to ring buffer i.
             map_[i] = i;
         }
     }

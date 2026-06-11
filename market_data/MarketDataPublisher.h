@@ -14,9 +14,9 @@
 struct us_listen_socket_t;
 namespace uWS
 {
-class Loop;
-template <bool, bool, typename>
-class WebSocket;
+    class Loop;
+    template <bool, bool, typename>
+    class WebSocket;
 }
 
 class MarketDataPublisher

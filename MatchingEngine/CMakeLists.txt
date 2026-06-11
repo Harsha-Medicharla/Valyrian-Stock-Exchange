@@ -45,6 +45,31 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(rigtorp_spscqueue)
 
+find_package(benchmark REQUIRED)
+
+file(GLOB ENGINE_SOURCES "src/*.cpp")
+
+add_executable(
+  matching_engine_bench
+  tests/matching_engine_bench.cc
+  ${ENGINE_SOURCES}
+)
+
+target_include_directories(
+  matching_engine_bench
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests
+  ${CMAKE_SOURCE_DIR}
+  ${rigtorp_spscqueue_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+  matching_engine_bench
+  PRIVATE
+  wal
+  benchmark::benchmark
+)
 
 add_executable(
   matching_engine_test

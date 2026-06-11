@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(FETCHCONTENT_QUIET ON CACHE BOOL "" FORCE)
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "" FORCE)
 
-# Find the package globally here so all subdirectories inherit it cleanly
+
 find_package(Threads REQUIRED)
 if(APPLE)
     list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libpq")
@@ -24,7 +24,7 @@ include_directories(${PostgreSQL_INCLUDE_DIRS})
 
 include(FetchContent)
 
-# hiredis
+
 FetchContent_Declare(
   hiredis_fc
   GIT_REPOSITORY https://github.com/redis/hiredis.git
@@ -33,7 +33,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(hiredis_fc)
 
-# jsoncpp
+
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
 set(BUILD_OBJECT_LIBS OFF CACHE BOOL "" FORCE)

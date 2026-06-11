@@ -23,7 +23,6 @@ void OrderController::listOrders(const drogon::HttpRequestPtr &req,
     {
         const auto db = PGPool::client();
 
-        // 1. Force strict binary sizes for Postgres inputs
         const int64_t pgUserId = static_cast<int64_t>(*userId);
         const int64_t pgLimit = static_cast<int64_t>(req->getOptionalParameter<uint32_t>("limit").value_or(200));
 
@@ -43,7 +42,6 @@ void OrderController::listOrders(const drogon::HttpRequestPtr &req,
                 item["qty"] = row["qty"].template as<int>();
                 item["filled_qty"] = row["filled_qty"].template as<int>();
 
-                // 2. Extract SMALLINTs as exactly 2-bytes (int16_t)
                 item["side"] = row["side"].template as<int16_t>();
                 item["type"] = row["type"].template as<int16_t>();
                 item["status"] = row["status"].template as<int16_t>();

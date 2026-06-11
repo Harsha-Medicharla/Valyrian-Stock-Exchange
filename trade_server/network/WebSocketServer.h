@@ -22,7 +22,7 @@ struct redisContext;
 struct us_listen_socket_t;
 namespace uWS
 {
-class Loop;
+    class Loop;
 }
 
 class WebSocketServer

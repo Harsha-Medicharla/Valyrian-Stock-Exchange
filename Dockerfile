@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libhiredis-dev \
     uuid-dev \
     libjsoncpp-dev \
+    libbenchmark-dev \
     pkg-config \
     zlib1g-dev \
     libbrotli-dev \

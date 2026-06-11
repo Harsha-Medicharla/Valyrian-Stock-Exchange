@@ -36,32 +36,32 @@ std::string CandleBuilder::onTrade(uint32_t symbolId, Price price, Qty qty, Time
         if (ts - candle.open_ns <
             static_cast<uint64_t>(windowSeconds) * kNsPerSecond)
         {
-            if (price > candle.high) candle.high = price;
-            if (price < candle.low)  candle.low  = price;
+            if (price > candle.high)
+                candle.high = price;
+            if (price < candle.low)
+                candle.low = price;
             candle.close = price;
             candle.volume += qty;
             continue;
         }
 
-        // Window closed — emit it
         std::ostringstream os;
         os << "{\"type\":\"candle\",\"symbol_id\":" << candle.symbol_id
-           << ",\"window\":"    << candle.window_seconds
-           << ",\"open\":"      << candle.open
-           << ",\"high\":"      << candle.high
-           << ",\"low\":"       << candle.low
-           << ",\"close\":"     << candle.close
-           << ",\"volume\":"    << candle.volume
-           << ",\"open_ns\":"   << candle.open_ns << "}";
-        // Append with newline separator so caller can split on \n
-        if (!allClosed.empty()) allClosed += '\n';
+           << ",\"window\":" << candle.window_seconds
+           << ",\"open\":" << candle.open
+           << ",\"high\":" << candle.high
+           << ",\"low\":" << candle.low
+           << ",\"close\":" << candle.close
+           << ",\"volume\":" << candle.volume
+           << ",\"open_ns\":" << candle.open_ns << "}";
+        if (!allClosed.empty())
+            allClosed += '\n';
         allClosed += os.str();
 
-        // Start new candle
         candle.open_ns = ts;
-        candle.open  = price;
-        candle.high  = price;
-        candle.low   = price;
+        candle.open = price;
+        candle.high = price;
+        candle.low = price;
         candle.close = price;
         candle.volume = qty;
         candle.symbol_id = symbolId;

@@ -3,7 +3,6 @@
 #include <rigtorp/SPSCQueue.h>
 #include "../types/RawOrder.h"
 
-// Wrapper over rigtorp::SPSCQueue preserving EMS queue interface.
 class SPSCQueueWrapper
 {
 private:

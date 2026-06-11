@@ -8,13 +8,13 @@
 
 namespace
 {
-[[nodiscard]] drogon::HttpResponsePtr unauthorizedResponse()
-{
-    auto resp = drogon::HttpResponse::newHttpResponse();
-    resp->setStatusCode(drogon::k401Unauthorized);
-    return resp;
+    [[nodiscard]] drogon::HttpResponsePtr unauthorizedResponse()
+    {
+        auto resp = drogon::HttpResponse::newHttpResponse();
+        resp->setStatusCode(drogon::k401Unauthorized);
+        return resp;
+    }
 }
-} // namespace
 
 std::optional<std::string_view> SessionValidator::bearerToken(std::string_view header)
 {
