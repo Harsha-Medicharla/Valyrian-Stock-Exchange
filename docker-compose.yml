@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: vse
+      POSTGRES_USER: vse
+      POSTGRES_PASSWORD: vse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/002-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vse -d vse"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  trade_server:
+    platform: linux/arm64
+    build:
+      context: .
+    working_dir: /app
+    environment:
+      VSE_PG_CONN: "host=postgres port=5432 dbname=vse user=vse password=vse"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      VSE_WS_PORT: 9001
+      VSE_MDP_WS_PORT: 9002
+      VSE_WAL_DIR: "/app/wal"
+    ports:
+      - "9001:9001"
+      - "9002:9002"
+    volumes:
+      - trade_wal_data:/app/wal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["./build/trade_server/trade_server_app"]
+
+  api_server:
+    platform: linux/arm64
+    build:
+      context: .
+    environment:
+      VSE_PG_CONN: "host=postgres port=5432 dbname=vse user=vse password=vse"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      API_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["./build/api_server/api_server_app"]
+
+volumes:
+  postgres_data:
+  trade_wal_data:

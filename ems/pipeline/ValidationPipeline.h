@@ -1,9 +1,11 @@
 #pragma once
 #include "../config/EMSConfig.h"
+#include "../../db/SymbolCache.h"
 #include "../types/RawOrder.h"
 #include "../types/Common.h"
 #include "RateLimiter.h"
 #include "MarketState.h"
+#include "BalanceCache.h"
 
 class ValidationPipeline
 {
@@ -14,19 +16,25 @@ private:
     bool checkRateLimit(const RawOrder *o) noexcept;
     bool checkTickSize(const RawOrder *o) const noexcept;
     bool checkLotSize(const RawOrder *o) const noexcept;
+    bool checkBalance(const RawOrder *o) noexcept;
 
     RateLimiter &rateLimiter_;
     MarketState &marketState_;
+    BalanceCache &balanceCache_;
+    const SymbolCache &symbolCache_;
 
 public:
-    ValidationPipeline(RateLimiter &rl, MarketState &ms);
+    ValidationPipeline(RateLimiter &rl, MarketState &ms, BalanceCache &bc, const SymbolCache &sc);
 
     Decision process(const RawOrder *order, RejectReason &reason);
 };
 
-inline ValidationPipeline::ValidationPipeline(RateLimiter &rl, MarketState &ms)
+inline ValidationPipeline::ValidationPipeline(RateLimiter &rl, MarketState &ms, BalanceCache &bc,
+                                              const SymbolCache &sc)
     : rateLimiter_(rl),
-      marketState_(ms)
+      marketState_(ms),
+      balanceCache_(bc),
+      symbolCache_(sc)
 {
 }
 
@@ -74,22 +82,42 @@ inline Decision ValidationPipeline::process(const RawOrder *o, RejectReason &r)
         return Decision::REJECT;
     }
 
+    if (!checkBalance(o))
+    {
+        r = RejectReason::INSUFFICIENT_FUNDS;
+        return Decision::REJECT;
+    }
+
     return Decision::ACCEPT;
 }
 
 inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noexcept
 {
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
+
     if (o->symbol_id >= marketState_.symbolCount())
         return false;
 
-    if (o->price < EMSConfig::MIN_PRICE || o->price > EMSConfig::MAX_PRICE)
+    if (o->type == static_cast<uint8_t>(OrderType::LIMIT))
+    {
+        if (o->price < EMSConfig::MIN_PRICE || o->price > EMSConfig::MAX_PRICE)
+            return false;
+    }
+    else if (o->type == static_cast<uint8_t>(OrderType::MARKET))
+    {
+        if (o->price != 0)
+            return false;
+    }
+    else
+    {
         return false;
+    }
+
     if (o->qty < EMSConfig::MIN_QTY || o->qty > EMSConfig::MAX_QTY)
         return false;
 
     if (o->side > 1)
-        return false;
-    if (o->type > 1)
         return false;
 
     return true;
@@ -97,6 +125,11 @@ inline bool ValidationPipeline::checkBasicValidity(const RawOrder *o) const noex
 
 inline bool ValidationPipeline::checkFatFingerNotional(const RawOrder *o) const noexcept
 {
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
+    if (o->type == static_cast<uint8_t>(OrderType::MARKET))
+        return true;
+
     const int64_t notional = o->price * static_cast<int64_t>(o->qty);
     return notional <= EMSConfig::FAT_FINGER_LIMIT;
 }
@@ -113,10 +146,32 @@ inline bool ValidationPipeline::checkRateLimit(const RawOrder *o) noexcept
 
 inline bool ValidationPipeline::checkTickSize(const RawOrder *o) const noexcept
 {
-    return (o->price % EMSConfig::TICK_SIZE) == 0;
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
+    if (o->type == static_cast<uint8_t>(OrderType::MARKET))
+        return true;
+
+    return symbolCache_.isValidTick(o->symbol_id, o->price);
 }
 
 inline bool ValidationPipeline::checkLotSize(const RawOrder *o) const noexcept
 {
-    return (o->qty % EMSConfig::LOT_SIZE) == 0;
+    return symbolCache_.isValidLot(o->symbol_id, o->qty);
+}
+
+inline bool ValidationPipeline::checkBalance(const RawOrder *o) noexcept
+{
+    if (o->cancel_flag != 0 || o->modify_flag != 0)
+        return true;
+
+    if (o->side == 0)
+    {
+        const int64_t amount = o->price * static_cast<int64_t>(o->qty);
+        return balanceCache_.tryBlockFunds(o->user_id, amount);
+    }
+    if (o->side == 1)
+    {
+        return balanceCache_.tryBlockHoldings(o->user_id, o->symbol_id, static_cast<int32_t>(o->qty));
+    }
+    return false;
 }

@@ -68,7 +68,7 @@ public:
     inline OrderSlot *claimSlot(uint64_t &seq)
     {
         const disruptorplus::sequence_t internalSeq = impl_->claimStrategy.claim_one();
-        seq = static_cast<uint64_t>(internalSeq) + 1; // external EMS sequence is 1-based
+        seq = static_cast<uint64_t>(internalSeq) + 1;
         return &impl_->buffer[internalSeq];
     }
 

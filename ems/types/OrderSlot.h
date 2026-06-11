@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 
-// Ring-buffer slot lifecycle for the dispatcher (see IngressWorker claim-before-validate).
 enum class OrderSlotState : uint8_t
 {
     Pending = 0,
@@ -23,4 +22,8 @@ struct alignas(64) OrderSlot
 
     uint8_t side;
     uint8_t type;
+    uint8_t cancel_flag;
+    uint8_t modify_flag;
 };
+
+static_assert(sizeof(OrderSlot) == 64, "OrderSlot must remain 64 bytes");

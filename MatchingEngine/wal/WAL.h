@@ -1,16 +1,18 @@
-#ifndef WAL_H
-#define WAL_H
+#pragma once
 
 #include <fstream>
-#include <string>
 #include <functional>
+#include <string>
+#include <cstdint>
+
 #include "../include/OrderBook.h"
 
 enum class WalAction : uint8_t
 {
     ADD = 1,
     CANCEL = 2,
-    MODIFY = 3
+    MODIFY = 3,
+    TRADE = 4
 };
 
 class OrderData
@@ -25,6 +27,7 @@ public:
     Qty remaining;
     TimeStamp timestamp;
     OrderState state;
+    OrderId peer_order_id = 0;
 };
 
 class LogEntry
@@ -37,15 +40,13 @@ public:
 class WALSystem
 {
 private:
-    std::string logFile;   // Path to the log file (unchanged name)
-    std::string tradeFile; // Path to the trade file (unchanged name)
+    std::string logFile;
 
-    // NEW: Persistent file streams
-    // We add these to keep the connection open for performance and error checking.
     std::ofstream logStream;
-    std::ofstream tradeStream;
 
     LogEntry reusableEntry;
+
+    uint64_t lastSeq_{0};
 
     void writeEntry();
 
@@ -60,6 +61,6 @@ public:
     void logTrade(OrderId aggId, OrderId restId, Price price, Qty qty);
 
     void recover(std::function<void(const LogEntry &)> visitor);
-};
 
-#endif
+    [[nodiscard]] uint64_t lastSequence() const noexcept { return lastSeq_; }
+};

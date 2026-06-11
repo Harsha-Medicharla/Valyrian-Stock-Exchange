@@ -3,14 +3,14 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include "../queues/MPSCRingBuffer.h"
 #include "../queues/RejectionBitset.h"
 #include "../config/EMSConfig.h"
-#include <pthread.h>
-#include <sched.h>
+#include "../../trade_server/ThreadAffinity.h"
 #include "../utils/SpinWait.h"
 #include "../types/OrderSlot.h"
-#include "MatchingEngine.h"
+#include "../../MatchingEngine/include/MatchingEngine.h"
 
 class Dispatcher
 {
@@ -23,14 +23,7 @@ private:
     std::thread thread_;
     std::atomic<bool> running_;
     uint64_t nextServerSequence_;
-
-    static constexpr uint64_t kMask = static_cast<uint64_t>(EMSConfig::MPSC_BUFFER_SIZE - 1);
-
-    [[nodiscard]] inline uint64_t mapServerToRingSeq(uint64_t serverSeq) const noexcept
-    {
-        // If serverSeq starts at 1, but ring is 0-indexed:
-        return (serverSeq - 1) & kMask;
-    }
+    uint64_t nextRingSequence_;
 
     void run() noexcept
     {
@@ -44,19 +37,37 @@ private:
                 continue;
             }
 
-            const uint64_t ringSeq = mapServerToRingSeq(nextServerSequence_);
-            if (ring_.isAvailable(ringSeq))
+            if (ring_.isAvailable(nextRingSequence_))
             {
-                OrderSlot &slot = ring_.get(ringSeq);
+                OrderSlot &slot = ring_.get(nextRingSequence_);
                 if (slot.sequence != nextServerSequence_)
                 {
                     ems::pause();
                     continue;
                 }
 
-                engine_.onNewOrder(
-                    slot);
-                ring_.releaseSlot(ringSeq);
+                if (slot.cancel_flag != 0)
+                {
+                    engine_.onCancelOrder(slot.order_id);
+                }
+                else if (slot.modify_flag != 0)
+                {
+                    engine_.onModifyOrder(slot.order_id, static_cast<Price>(slot.price),
+                                          static_cast<Qty>(slot.qty));
+                }
+                else
+                {
+                    engine_.onNewOrder(
+                        slot.order_id,
+                        static_cast<UserId>(slot.user_id),
+                        static_cast<Side>(slot.side),
+                        static_cast<OrderType>(slot.type),
+                        static_cast<Price>(slot.price),
+                        static_cast<Qty>(slot.qty),
+                        static_cast<TimeStamp>(slot.timestamp));
+                }
+                ring_.releaseSlot(nextRingSequence_);
+                ++nextRingSequence_;
                 ++nextServerSequence_;
                 continue;
             }
@@ -67,18 +78,10 @@ private:
 
     void pinToCore() noexcept
     {
-#if defined(__linux__)
-        cpu_set_t cpuset;
-        CPU_ZERO(&cpuset);
-        CPU_SET(coreId_, &cpuset);
-
-        pthread_setaffinity_np(
-            pthread_self(),
-            sizeof(cpu_set_t),
-            &cpuset);
-#else
-        (void)coreId_;
-#endif
+        if (const auto mapped = vse::threads::coreForRole("METhread " + std::to_string(symbolId_)))
+            vse::threads::pinToCore(*mapped);
+        else
+            vse::threads::pinToCore(coreId_);
     }
 
 public:
@@ -95,7 +98,8 @@ public:
           coreId_(coreId),
           thread_(),
           running_(false),
-          nextServerSequence_(1)
+          nextServerSequence_(1),
+          nextRingSequence_(1)
     {
     }
 

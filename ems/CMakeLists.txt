@@ -10,14 +10,15 @@ include(FetchContent)
 FetchContent_Declare(
   rigtorp_spscqueue
   GIT_REPOSITORY https://github.com/rigtorp/SPSCQueue.git
-  GIT_TAG master
+  GIT_TAG 565a5149d54930463d58cb0f69b978d439555e66
+  GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(rigtorp_spscqueue)
 
 FetchContent_Declare(
   disruptorplus
   GIT_REPOSITORY https://github.com/lewissbaker/disruptorplus.git
-  GIT_TAG master
+  GIT_TAG 748e354476e0bf86dfdbb55f1d925222d7ee631b
 )
 FetchContent_MakeAvailable(disruptorplus)
 
@@ -37,25 +38,16 @@ endif()
 
 find_package(Threads REQUIRED)
 
-add_executable(ems_app
-  main.cpp
+add_library(ems_lib INTERFACE)
+target_include_directories(ems_lib INTERFACE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}
+  ${rigtorp_spscqueue_SOURCE_DIR}/include
+  ${disruptorplus_SOURCE_DIR}/include
+  ${CMAKE_SOURCE_DIR}/MatchingEngine/include
 )
-
-target_include_directories(ems_app
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${rigtorp_spscqueue_SOURCE_DIR}/include
-    ${disruptorplus_SOURCE_DIR}/include
-)
-
-target_compile_options(ems_app
-  PRIVATE
-    -O3
-    -march=native
-    -pthread
-)
-
-target_link_libraries(ems_app
-  PRIVATE
-    Threads::Threads
+target_link_libraries(ems_lib INTERFACE
+  Threads::Threads
+  wal
+  vse_shared
 )
