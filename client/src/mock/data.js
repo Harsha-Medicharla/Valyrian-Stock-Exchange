@@ -1,0 +1,206 @@
+// Mock data matching API contract shapes exactly
+// Swap to real API calls by replacing the data source — component logic doesn't change
+
+export const mockUser = {
+  id: 7,
+  email: 'trader@nexus.io',
+  name: 'Arjun Mehta',
+};
+
+export const mockPortfolio = {
+  cashBalance: 91500,
+  totalMtm: 482340,
+  unrealizedPnl: 22840,
+  dailyChange: 1.73,
+  holdings: [
+    {
+      assetId: 1,
+      symbol: 'RELI',
+      name: 'Reliance Industries',
+      qty: 120,
+      avgCostBasis: 2410.00,
+      currentPrice: 2581.50,
+      marketValue: 309780,
+      unrealizedPnl: 20580,
+      pnlPct: 7.11,
+    },
+    {
+      assetId: 2,
+      symbol: 'TCS',
+      name: 'Tata Consultancy Services',
+      qty: 40,
+      avgCostBasis: 3720.00,
+      currentPrice: 3905.75,
+      marketValue: 156230,
+      unrealizedPnl: 7430,
+      pnlPct: 4.99,
+    },
+    {
+      assetId: 3,
+      symbol: 'INFY',
+      name: 'Infosys Ltd',
+      qty: 60,
+      avgCostBasis: 1690.00,
+      currentPrice: 1623.40,
+      marketValue: 97404,
+      unrealizedPnl: -3996,
+      pnlPct: -3.94,
+    },
+    {
+      assetId: 4,
+      symbol: 'HDFC',
+      name: 'HDFC Bank',
+      qty: 30,
+      avgCostBasis: 1540.00,
+      currentPrice: 1612.80,
+      marketValue: 48384,
+      unrealizedPnl: 2184,
+      pnlPct: 4.73,
+    },
+    {
+      assetId: 5,
+      symbol: 'WIPRO',
+      name: 'Wipro Ltd',
+      qty: 80,
+      avgCostBasis: 498.00,
+      currentPrice: 472.15,
+      marketValue: 37772,
+      unrealizedPnl: -2068,
+      pnlPct: -5.19,
+    },
+  ],
+};
+
+export const mockAssets = mockPortfolio.holdings.map((h) => ({
+  assetId: h.assetId,
+  symbol: h.symbol,
+  name: h.name,
+  currentPrice: h.currentPrice,
+}));
+
+export const mockPriceHistory = {
+  1: {
+    assetId: 1,
+    symbol: 'RELI',
+    prices: [
+      { date: '2025-03-10', price: 2391 },
+      { date: '2025-03-11', price: 2415 },
+      { date: '2025-03-12', price: 2438 },
+      { date: '2025-03-13', price: 2402 },
+      { date: '2025-03-14', price: 2467 },
+      { date: '2025-03-17', price: 2501 },
+      { date: '2025-03-18', price: 2519 },
+      { date: '2025-03-19', price: 2543 },
+      { date: '2025-03-20', price: 2558 },
+      { date: '2025-03-21', price: 2571 },
+      { date: '2025-03-24', price: 2581.50 },
+    ],
+  },
+  2: {
+    assetId: 2,
+    symbol: 'TCS',
+    prices: [
+      { date: '2025-03-10', price: 3680 },
+      { date: '2025-03-11', price: 3710 },
+      { date: '2025-03-12', price: 3698 },
+      { date: '2025-03-13', price: 3742 },
+      { date: '2025-03-14', price: 3760 },
+      { date: '2025-03-17', price: 3788 },
+      { date: '2025-03-18', price: 3821 },
+      { date: '2025-03-19', price: 3845 },
+      { date: '2025-03-20', price: 3872 },
+      { date: '2025-03-21', price: 3891 },
+      { date: '2025-03-24', price: 3905.75 },
+    ],
+  },
+  3: {
+    assetId: 3,
+    symbol: 'INFY',
+    prices: [
+      { date: '2025-03-10', price: 1710 },
+      { date: '2025-03-11', price: 1698 },
+      { date: '2025-03-12', price: 1685 },
+      { date: '2025-03-13', price: 1672 },
+      { date: '2025-03-14', price: 1680 },
+      { date: '2025-03-17', price: 1664 },
+      { date: '2025-03-18', price: 1648 },
+      { date: '2025-03-19', price: 1637 },
+      { date: '2025-03-20', price: 1630 },
+      { date: '2025-03-21', price: 1626 },
+      { date: '2025-03-24', price: 1623.40 },
+    ],
+  },
+  4: {
+    assetId: 4,
+    symbol: 'HDFC',
+    prices: [
+      { date: '2025-03-10', price: 1541 },
+      { date: '2025-03-11', price: 1558 },
+      { date: '2025-03-12', price: 1572 },
+      { date: '2025-03-13', price: 1584 },
+      { date: '2025-03-14', price: 1592 },
+      { date: '2025-03-17', price: 1600 },
+      { date: '2025-03-18', price: 1608 },
+      { date: '2025-03-19', price: 1604 },
+      { date: '2025-03-20', price: 1609 },
+      { date: '2025-03-21', price: 1611 },
+      { date: '2025-03-24', price: 1612.80 },
+    ],
+  },
+  5: {
+    assetId: 5,
+    symbol: 'WIPRO',
+    prices: [
+      { date: '2025-03-10', price: 510 },
+      { date: '2025-03-11', price: 505 },
+      { date: '2025-03-12', price: 498 },
+      { date: '2025-03-13', price: 491 },
+      { date: '2025-03-14', price: 486 },
+      { date: '2025-03-17', price: 480 },
+      { date: '2025-03-18', price: 478 },
+      { date: '2025-03-19', price: 475 },
+      { date: '2025-03-20', price: 473 },
+      { date: '2025-03-21', price: 471 },
+      { date: '2025-03-24', price: 472.15 },
+    ],
+  },
+};
+
+export const mockAudit = {
+  total: 142,
+  entries: [
+    { id: 1, timestamp: '2025-03-24T07:32:08.441Z', tradeId: 42, userId: 7, side: 'BUY', assetSymbol: 'RELI', qty: 50, price: 2577.00, txHash: '0xa3f9c2e1d8b704f5a69ce3812d04b7f3c9a2e811', verified: true },
+    { id: 2, timestamp: '2025-03-24T07:28:15.112Z', tradeId: 41, userId: 3, side: 'SELL', assetSymbol: 'TCS', qty: 20, price: 3901.50, txHash: '0xb7d1e4f3a209c5e8b641d02a73c19b4d88f10a32', verified: true },
+    { id: 3, timestamp: '2025-03-24T07:19:02.887Z', tradeId: 40, userId: 7, side: 'BUY', assetSymbol: 'INFY', qty: 15, price: 1630.00, txHash: '0xc4e8a1b2f305d9e7c820a14b52d08c3e77a9b4f0', verified: true },
+    { id: 4, timestamp: '2025-03-24T07:05:44.321Z', tradeId: 39, userId: 2, side: 'BUY', assetSymbol: 'HDFC', qty: 10, price: 1609.75, txHash: '0xd9a2c7f4e108b3d5a932e25c84f17b2e66b8c3a1', verified: true },
+    { id: 5, timestamp: '2025-03-24T06:58:30.005Z', tradeId: 38, userId: 5, side: 'SELL', assetSymbol: 'WIPRO', qty: 35, price: 473.50, txHash: '0xe5b3d8a9f204c1e6b843f37d95e28a1d55c7d2b0', verified: true },
+    { id: 6, timestamp: '2025-03-24T06:45:11.774Z', tradeId: 37, userId: 7, side: 'BUY', assetSymbol: 'RELI', qty: 70, price: 2555.00, txHash: '0xf6c4e9b0a305d2f7c954a48e06f39b2e44d6e3c9', verified: true },
+    { id: 7, timestamp: '2025-03-24T06:32:08.993Z', tradeId: 36, userId: 1, side: 'SELL', assetSymbol: 'TCS', qty: 5, price: 3895.25, txHash: '0xa7d5f0c1b406e3a8d065b59f17a40c3f33e5f4d8', verified: true },
+    { id: 8, timestamp: '2025-03-24T06:20:55.241Z', tradeId: 35, userId: 4, side: 'BUY', assetSymbol: 'INFY', qty: 25, price: 1637.00, txHash: '0xb8e6a1d2c507f4b9e176c60a28b51d4a22f4a5e7', verified: true },
+    { id: 9, timestamp: '2025-03-23T18:45:20.108Z', tradeId: 34, userId: 7, side: 'SELL', assetSymbol: 'HDFC', qty: 8, price: 1604.50, txHash: '0xc9f7b2e3d608a5c0f287d71b39c62e5b11a3b6f6', verified: true },
+    { id: 10, timestamp: '2025-03-23T18:30:45.662Z', tradeId: 33, userId: 6, side: 'BUY', assetSymbol: 'WIPRO', qty: 100, price: 478.00, txHash: '0xd0a8c3f4e709b6d1a398e82c40d73f6c00b2c7a5', verified: true },
+    { id: 11, timestamp: '2025-03-23T17:55:12.445Z', tradeId: 32, userId: 3, side: 'BUY', assetSymbol: 'RELI', qty: 30, price: 2543.25, txHash: '0xe1b9d4a5f80ac7e2b409f93d51e84a7d09c1d8b4', verified: true },
+    { id: 12, timestamp: '2025-03-23T17:40:09.887Z', tradeId: 31, userId: 7, side: 'SELL', assetSymbol: 'TCS', qty: 12, price: 3845.00, txHash: '0xf2c0e5b6a90bd8f3c510a04e62f95b8e08d0e9c3', verified: true },
+    { id: 13, timestamp: '2025-03-23T17:22:33.221Z', tradeId: 30, userId: 2, side: 'SELL', assetSymbol: 'INFY', qty: 20, price: 1648.75, txHash: '0xa3d1f6c7b00ce9a4d621b15f73a06c9f07e1f0d2', verified: true },
+    { id: 14, timestamp: '2025-03-23T17:08:51.119Z', tradeId: 29, userId: 5, side: 'BUY', assetSymbol: 'HDFC', qty: 15, price: 1600.00, txHash: '0xb4e2a7d8c11df0b5e732c26a84b17d0a16f0a1e1', verified: true },
+    { id: 15, timestamp: '2025-03-23T16:51:28.773Z', tradeId: 28, userId: 7, side: 'BUY', assetSymbol: 'WIPRO', qty: 50, price: 480.25, txHash: '0xc5f3b8e9d22ea1c6f843d37b95c28e1b25a1b2f0', verified: true },
+    { id: 16, timestamp: '2025-03-23T16:38:05.558Z', tradeId: 27, userId: 1, side: 'BUY', assetSymbol: 'RELI', qty: 40, price: 2519.50, txHash: '0xd6a4c9f0e33fb2d7a954e48c06d39f2c34b2c3a9', verified: true },
+    { id: 17, timestamp: '2025-03-23T16:20:44.332Z', tradeId: 26, userId: 4, side: 'SELL', assetSymbol: 'TCS', qty: 8, price: 3821.00, txHash: '0xe7b5d0a1f44ac3e8b065f59d17e40a3d43c3d4b8', verified: true },
+    { id: 18, timestamp: '2025-03-23T16:05:18.006Z', tradeId: 25, userId: 3, side: 'BUY', assetSymbol: 'INFY', qty: 45, price: 1664.25, txHash: '0xf8c6e1b2a55bd4f9c176a60e28f51b4e52d4e5c7', verified: true },
+    { id: 19, timestamp: '2025-03-23T15:48:52.884Z', tradeId: 24, userId: 6, side: 'SELL', assetSymbol: 'HDFC', qty: 22, price: 1592.75, txHash: '0xa9d7f2c3b66ce5a0d287b71f39a62c5f61e5f6d6', verified: true },
+    { id: 20, timestamp: '2025-03-23T15:30:29.447Z', tradeId: 23, userId: 7, side: 'BUY', assetSymbol: 'WIPRO', qty: 60, price: 486.50, txHash: '0xb0e8a3d4c77df6b1e398c82a40b73d6a70f6a7e5', verified: true },
+  ],
+};
+
+export const mockActiveLocks = [
+  { user: 'user_3', asset: 'RELI', lockType: 'EXCLUSIVE', durationMs: 142 },
+  { user: 'user_7', asset: 'TCS',  lockType: 'EXCLUSIVE', durationMs: 2341 },
+];
+
+export const mockSystemHealth = {
+  throughput: 142,
+  deadlockCount: 3,
+  rollbackRate: 2.1,
+  activeConnections: 8,
+  maxConnections: 10,
+};

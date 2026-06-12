@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    background-color: #0a0a0a;
+    color: #e8e8e8;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #111111;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a3a;
+  }
+
+  input, select, textarea {
+    background: #111111;
+    border: 1px solid #1f1f1f;
+    color: #e8e8e8;
+    outline: none;
+  }
+  input:focus, select:focus {
+    border-color: #3b82f6;
+  }
+  input::placeholder {
+    color: #6b6b6b;
+  }
+}
+
+@layer utilities {
+  .mono {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .surface {
+    background-color: #111111;
+    border: 1px solid #1f1f1f;
+  }
+
+  .surface-lighter {
+    background-color: #181818;
+    border: 1px solid #252525;
+  }
+
+  .bg-bg { background-color: #0a0a0a; }
+  .bg-surface { background-color: #111111; }
+
+  .text-profit { color: #22c55e; }
+  .text-loss   { color: #ef4444; }
+  .text-info   { color: #3b82f6; }
+  .text-warn   { color: #f59e0b; }
+  .text-muted  { color: #6b6b6b; }
+
+  .badge-profit {
+    background-color: rgba(34,197,94,0.12);
+    color: #22c55e;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge-loss {
+    background-color: rgba(239,68,68,0.12);
+    color: #ef4444;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge-warn {
+    background-color: rgba(245,158,11,0.12);
+    color: #f59e0b;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    background: linear-gradient(90deg, #1a1a1a 25%, #222222 50%, #1a1a1a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}
