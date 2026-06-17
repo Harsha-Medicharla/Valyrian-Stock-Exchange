@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "BatchBuffer.h"
@@ -16,9 +17,8 @@
 class DBWriter
 {
 private:
-    std::vector<EventSPSC<DBEvent>> &ingressDbQueues_;
     std::vector<EventSPSC<DBEvent>> &engineDbQueues_;
-    uint32_t numSymbols_{0};
+    std::vector<uint32_t> assignedSymbols_;
     BalanceCache &balanceCache_;
     std::unique_ptr<IDBWriterBackend> ownedWriter_;
     IDBWriterBackend *writer_{nullptr};
@@ -30,28 +30,24 @@ private:
     void flush();
 
 public:
-    DBWriter(std::vector<EventSPSC<DBEvent>> &ingressDbQueues,
-             std::vector<EventSPSC<DBEvent>> &engineDbQueues,
-             uint32_t numSymbols,
+    DBWriter(std::vector<EventSPSC<DBEvent>> &engineDbQueues,
+             std::vector<uint32_t> assignedSymbols,
              BalanceCache &balanceCache,
              const std::string &pgConnString)
-        : ingressDbQueues_(ingressDbQueues),
-          engineDbQueues_(engineDbQueues),
-          numSymbols_(numSymbols),
+        : engineDbQueues_(engineDbQueues),
+          assignedSymbols_(std::move(assignedSymbols)),
           balanceCache_(balanceCache),
           ownedWriter_(std::make_unique<PGWriter>(pgConnString)),
           writer_(ownedWriter_.get())
     {
     }
 
-    DBWriter(std::vector<EventSPSC<DBEvent>> &ingressDbQueues,
-             std::vector<EventSPSC<DBEvent>> &engineDbQueues,
-             uint32_t numSymbols,
+    DBWriter(std::vector<EventSPSC<DBEvent>> &engineDbQueues,
+             std::vector<uint32_t> assignedSymbols,
              BalanceCache &balanceCache,
              IDBWriterBackend &writer)
-        : ingressDbQueues_(ingressDbQueues),
-          engineDbQueues_(engineDbQueues),
-          numSymbols_(numSymbols),
+        : engineDbQueues_(engineDbQueues),
+          assignedSymbols_(std::move(assignedSymbols)),
           balanceCache_(balanceCache),
           writer_(&writer)
     {

@@ -1,11 +1,14 @@
 #include <atomic>
+#include <algorithm>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <json/json.h>
+#include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "config/TradeServerConfig.h"
 #include "core/EMSCore.h"
@@ -111,8 +114,20 @@ int main()
     EMSCore ems(ioThreads, symbolCache.count(), symbolCache);
     bootstrapBalanceCache(ems.balanceCache(), pgConn, static_cast<uint32_t>(ems.numSymbols()));
 
-    DBWriter dbWriter(ems.ingressDbQueues(), ems.engineDbQueues(), static_cast<uint32_t>(ems.numSymbols()),
-                      ems.balanceCache(), pgConn);
+    const std::size_t dbWriterShardCount = std::min<std::size_t>(4, std::max<std::size_t>(1, ems.numSymbols()));
+    std::vector<std::unique_ptr<DBWriter>> dbWriters;
+    dbWriters.reserve(dbWriterShardCount);
+    for (std::size_t writerIdx = 0; writerIdx < dbWriterShardCount; ++writerIdx)
+    {
+        std::vector<uint32_t> assignedSymbols;
+        for (std::size_t symbolIdx = writerIdx; symbolIdx < ems.numSymbols(); symbolIdx += dbWriterShardCount)
+            assignedSymbols.push_back(static_cast<uint32_t>(symbolIdx));
+        if (!assignedSymbols.empty())
+        {
+            dbWriters.push_back(std::make_unique<DBWriter>(
+                ems.engineDbQueues(), std::move(assignedSymbols), ems.balanceCache(), pgConn));
+        }
+    }
     MarketDataPublisher marketData(ems.tradeQueues(), ems.bookUpdateQueues(),
                                    static_cast<uint32_t>(ems.numSymbols()), mdpPort);
     WebSocketServer ws(ems, wsPort);
@@ -120,7 +135,8 @@ int main()
     activeWs = &ws;
 
     ems.start();
-    dbWriter.start();
+    for (const auto &dbWriter : dbWriters)
+        dbWriter->start();
     marketData.start();
     resp.start();
     ws.startCancelSubscriber();
@@ -143,8 +159,10 @@ int main()
     resp.join();
     marketData.stop();
     marketData.join();
-    dbWriter.stop();
-    dbWriter.join();
+    for (const auto &dbWriter : dbWriters)
+        dbWriter->stop();
+    for (const auto &dbWriter : dbWriters)
+        dbWriter->join();
     ems.stop();
     ems.join();
     activeWs = nullptr;
