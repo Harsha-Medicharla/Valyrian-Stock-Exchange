@@ -3,7 +3,6 @@
 
 struct alignas(64) RawOrder
 {
-    // Server-assigned sequence for strict dispatch ordering.
     uint64_t sequence;
     uint64_t order_id;
     uint32_t user_id;
@@ -15,5 +14,10 @@ struct alignas(64) RawOrder
     uint8_t side;
     uint8_t type;
 
+    uint8_t cancel_flag;
+    uint8_t modify_flag;
+
     uint64_t timestamp;
 };
+
+static_assert(sizeof(RawOrder) == 64, "RawOrder must remain 64 bytes");

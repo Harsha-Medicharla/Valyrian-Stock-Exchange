@@ -2,8 +2,6 @@
 #include <atomic>
 #include <cstdint>
 
-// Simple monotonic ID generator.
-// Suitable for lock-free, single-process usage.
 class IdGenerator
 {
 private:
